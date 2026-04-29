@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Receipt AI
 
-## Getting Started
+A personal receipt scanning app that uses Claude Vision to extract structured data from receipt images, stores it in a local vector database, and lets you query your purchase history in natural language.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Scan receipts** — upload or photograph a receipt; Claude extracts store info, items, tax, payment, rewards, and POS details automatically
+- **Browse receipts** — view all scanned receipts and their line items with category tags
+- **Ask AI** — query your purchase history in plain English (e.g. "How much did I spend on dairy this month?" or "Show me olive oil price history from Costco")
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- [Next.js 15](https://nextjs.org) — frontend and API routes
+- [Claude](https://anthropic.com) (`claude-opus-4-7`) — receipt image extraction and natural language answers
+- [LanceDB](https://lancedb.com) — embedded vector database (no server required, data lives in `data/lancedb/`)
+- [Voyage AI](https://voyageai.com) (`voyage-3`) — semantic embeddings for vector search
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Prerequisites
 
-## Learn More
+- Node.js 18+
+- An [Anthropic API key](https://console.anthropic.com)
+- A [Voyage AI API key](https://dash.voyageai.com)
 
-To learn more about Next.js, take a look at the following resources:
+## Setup
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **Clone the repo**
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```bash
+   git clone https://github.com/tapan-d/Receipt-AI.git
+   cd Receipt-AI
+   ```
 
-## Deploy on Vercel
+2. **Install dependencies**
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   ```bash
+   npm install
+   npm install @lancedb/lancedb-darwin-x64   # macOS Intel
+   # or
+   npm install @lancedb/lancedb-darwin-arm64  # macOS Apple Silicon
+   # or
+   npm install @lancedb/lancedb-linux-x64-gnu # Linux x64
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   > LanceDB ships native binaries as optional dependencies. Due to a [known npm bug](https://github.com/npm/cli/issues/4828), the platform-specific package sometimes needs to be installed explicitly.
+
+3. **Add API keys**
+
+   ```bash
+   cp .env.local.example .env.local
+   ```
+
+   Edit `.env.local` and fill in your keys:
+
+   ```
+   ANTHROPIC_API_KEY=your_anthropic_api_key_here
+   VOYAGE_API_KEY=your_voyage_api_key_here
+   ```
+
+4. **Start the development server**
+
+   ```bash
+   node node_modules/next/dist/bin/next dev
+   ```
+
+   Open [http://localhost:3000](http://localhost:3000).
+
+## Data Storage
+
+All data is stored locally on your machine — nothing is sent to external servers except the API calls to Anthropic and Voyage AI.
+
+| Location | Contents |
+|---|---|
+| `data/lancedb/` | Receipt records and vector embeddings |
+| `public/uploads/` | Uploaded receipt images |
+
+Both directories are excluded from git. Data persists across restarts.
+
+## Usage
+
+1. Go to **Upload** and drop in a receipt image (JPG, PNG, or WebP)
+2. Claude extracts all details — takes a few seconds
+3. View the receipt under **Receipts** to verify the extracted data
+4. Head to **Ask AI** to query across all your receipts in natural language
+
+### Example questions
+
+- How much did I spend on dairy products this month?
+- Show me the price history of olive oil from Costco.
+- What are my top 5 most purchased items?
+- How much tax did I pay at Trader Joe's?
+- Total spent on groceries last quarter?
