@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# app data
+/data/
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# claude code
+.claude/
