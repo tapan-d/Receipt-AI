@@ -2,6 +2,65 @@
 
 A personal receipt scanning app that uses Claude Vision to extract structured data from receipt images, stores it in a local vector database, and lets you query your purchase history in natural language.
 
+## Architecture
+
+```mermaid
+flowchart TD
+    subgraph Browser["Browser (Next.js Pages)"]
+        UI_UP["Upload Page"]
+        UI_RX["Receipts / Detail Pages"]
+        UI_QR["Query (Ask AI) Page"]
+    end
+
+    subgraph API["Next.js API Routes"]
+        RT_UP["POST /api/receipts/upload"]
+        RT_RX["GET  /api/receipts\nGET  /api/receipts/[id]"]
+        RT_QR["POST /api/query"]
+    end
+
+    subgraph Lib["Library Layer (swap zone)"]
+        EXTRACT["extract.ts\nextractReceiptFromImage()"]
+        EMBED["embed.ts\nembedTexts() · embedText()"]
+        DB["db.ts\nsaveReceipt() · getAllReceipts()\ngetReceiptById() · searchItemsByVector()"]
+    end
+
+    subgraph External["External APIs"]
+        CLAUDE["Anthropic\nclaude-opus-4-7"]
+        VOYAGE["Voyage AI\nvoyage-3 · REST"]
+    end
+
+    subgraph Storage["Local Storage"]
+        LANCEDB[("LanceDB\ndata/lancedb/\nreceipts · receipt_items")]
+        IMGS["public/uploads/\nReceipt images"]
+    end
+
+    UI_UP -->|"image file"| RT_UP
+    UI_RX -->|"fetch"| RT_RX
+    UI_QR -->|"question"| RT_QR
+
+    RT_UP --> IMGS
+    RT_UP --> EXTRACT
+    RT_UP --> EMBED
+    RT_UP --> DB
+
+    RT_RX --> DB
+    RT_QR --> EMBED
+    RT_QR --> DB
+    RT_QR -->|"items + receipt context"| CLAUDE
+
+    EXTRACT -->|"base64 image"| CLAUDE
+    EMBED -->|"text → vectors"| VOYAGE
+    DB <-->|"read / write"| LANCEDB
+```
+
+### Upload flow
+`image` → save to disk → **Claude Vision** extracts structured JSON → **Voyage AI** embeds each item → **LanceDB** stores receipt + item records with vectors
+
+### Query (RAG) flow
+`question` → **Voyage AI** embeds query → **LanceDB** vector search returns top-N items → fetch parent receipt records for tax/financial context → **Claude** answers with full context
+
+---
+
 ## Features
 
 - **Scan receipts** — upload or photograph a receipt; Claude extracts store info, items, tax, payment, rewards, and POS details automatically
