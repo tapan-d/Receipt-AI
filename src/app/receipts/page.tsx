@@ -4,6 +4,32 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { Receipt } from '@/lib/types';
 
+const TINTS = [
+  { bg: 'var(--tint-purple-bg)', fg: 'var(--tint-purple-fg)' },
+  { bg: 'var(--tint-coral-bg)',  fg: 'var(--tint-coral-fg)' },
+  { bg: 'var(--tint-teal-bg)',   fg: 'var(--tint-teal-fg)' },
+  { bg: 'var(--tint-pink-bg)',   fg: 'var(--tint-pink-fg)' },
+];
+
+function initials(name: string) {
+  return name.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function relativeDate(dateStr: string): string {
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  if (dateStr === today) return 'Today';
+  if (dateStr === yesterday) return 'Yesterday';
+  const [y, m, d] = dateStr.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+  const now = new Date();
+  const isThisYear = date.getFullYear() === now.getFullYear();
+  return isThisYear
+    ? `${months[parseInt(m) - 1]} ${parseInt(d)}`
+    : `${months[parseInt(m) - 1]} ${parseInt(d)}, ${y}`;
+}
+
 export default function ReceiptsPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,52 +47,65 @@ export default function ReceiptsPage() {
   }, []);
 
   if (loading) {
-    return <p className="text-gray-500">Loading receipts...</p>;
+    return <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Loading…</p>;
   }
 
   if (error) {
-    return <p className="text-red-600">{error}</p>;
-  }
-
-  if (receipts.length === 0) {
-    return (
-      <div className="text-center py-16">
-        <div className="text-5xl mb-4">🧾</div>
-        <h2 className="text-xl font-semibold text-gray-700">No receipts yet</h2>
-        <p className="text-gray-500 mt-2">
-          <Link href="/upload" className="text-blue-600 hover:underline">Upload a receipt</Link> to get started.
-        </p>
-      </div>
-    );
+    return <p style={{ fontSize: 14, color: 'var(--danger-text)' }}>{error}</p>;
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">My Receipts</h1>
-        <Link href="/upload" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
-          + Upload
-        </Link>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {receipts.map(r => (
-          <Link
-            key={r.id}
-            href={`/receipts/${r.id}`}
-            className="block bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-blue-300 transition-all"
-          >
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="font-semibold text-gray-900">{r.store_name}</p>
-                <p className="text-sm text-gray-500 mt-0.5">{r.purchase_date}</p>
-              </div>
-              <p className="text-lg font-bold text-gray-800">${r.total.toFixed(2)}</p>
-            </div>
-            <p className="text-xs text-gray-400 mt-3">{r.item_count} items</p>
-          </Link>
-        ))}
-      </div>
+      <section>
+        <h1 style={{ fontSize: 28, fontWeight: 500, margin: '0 0 4px', letterSpacing: '-0.025em' }}>Receipts</h1>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>
+          {receipts.length > 0 ? `${receipts.length} receipt${receipts.length !== 1 ? 's' : ''}` : 'No receipts yet'}
+        </p>
+      </section>
+
+      {receipts.length === 0 ? (
+        <p style={{ fontSize: 14, color: 'var(--text-tertiary)', textAlign: 'center', paddingTop: 32 }}>
+          Upload your first receipt to get started.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {receipts.map((r, i) => {
+            const tint = TINTS[i % 4];
+            return (
+              <Link key={r.id} href={`/receipts/${r.id}`} style={{
+                display: 'grid', gridTemplateColumns: '36px 1fr auto auto',
+                gap: 14, alignItems: 'center', padding: '12px 14px',
+                background: 'var(--bg-primary)',
+                border: '0.5px solid var(--border-light)', borderRadius: 8,
+                textDecoration: 'none', color: 'inherit',
+                transition: 'background 0.15s, border-color 0.15s',
+              }}>
+                <span style={{
+                  width: 32, height: 32, borderRadius: 8,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 500,
+                  background: tint.bg, color: tint.fg,
+                  flexShrink: 0,
+                }}>
+                  {initials(r.store_name)}
+                </span>
+                <div>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 500 }}>{r.store_name}</p>
+                  <p style={{ margin: '1px 0 0', fontSize: 11, color: 'var(--text-secondary)' }}>
+                    {r.item_count} item{r.item_count !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{relativeDate(r.purchase_date)}</span>
+                <span style={{ fontSize: 13, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
+                  ${r.total.toFixed(2)}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
     </div>
   );
 }

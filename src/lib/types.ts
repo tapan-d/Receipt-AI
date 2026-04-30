@@ -48,6 +48,8 @@ export interface Receipt {
 }
 
 export interface ExtractedReceipt {
+  is_receipt: boolean;
+  rejection_reason: string;
   store_name: string;
   store_address: string;
   store_phone: string;

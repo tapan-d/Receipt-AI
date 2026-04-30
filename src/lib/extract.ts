@@ -3,7 +3,7 @@ import type { ExtractedReceipt } from './types';
 
 const client = new Anthropic();
 
-const EXTRACTION_SYSTEM = `You are a receipt parsing assistant. Extract every piece of structured data from receipt images accurately.
+const EXTRACTION_SYSTEM = `You are a receipt parsing assistant. First determine if the image is a retail/grocery/restaurant receipt. If it is not, return {"is_receipt": false, "rejection_reason": "<brief reason>"}. If it is a receipt, extract all structured data.
 Return ONLY valid JSON — no markdown, no explanation. Use empty string "" for missing text fields and 0 for missing numeric fields.`;
 
 export async function extractReceiptFromImage(imageBase64: string, mediaType: string): Promise<ExtractedReceipt> {
@@ -31,8 +31,13 @@ export async function extractReceiptFromImage(imageBase64: string, mediaType: st
           },
           {
             type: 'text',
-            text: `Extract all receipt data and return this exact JSON structure (no other text):
+            text: `If the image is not a retail/grocery/restaurant receipt, return ONLY:
+{"is_receipt": false, "rejection_reason": "<brief description of what the image actually is>"}
+
+Otherwise extract all data and return this exact JSON structure (no other text):
 {
+  "is_receipt": true,
+  "rejection_reason": "",
   "store_name": "string",
   "store_address": "full address as single string",
   "store_phone": "string",

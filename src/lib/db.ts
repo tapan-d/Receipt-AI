@@ -95,6 +95,19 @@ export async function getReceiptsByIds(ids: string[]): Promise<Receipt[]> {
   return results.filter((r): r is Receipt => r !== null);
 }
 
+export async function deleteReceipt(id: string): Promise<void> {
+  const conn = await getDb();
+  const tables = await conn.tableNames();
+  if (tables.includes('receipts')) {
+    const tbl = await conn.openTable('receipts');
+    await tbl.delete(`id = '${id}'`);
+  }
+  if (tables.includes('receipt_items')) {
+    const tbl = await conn.openTable('receipt_items');
+    await tbl.delete(`receipt_id = '${id}'`);
+  }
+}
+
 export async function getAllItems(): Promise<ReceiptItem[]> {
   const tbl = await getReceiptItemsTable();
   if (!tbl) return [];

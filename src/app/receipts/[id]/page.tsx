@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import type { Receipt, ReceiptItem } from '@/lib/types';
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -42,10 +41,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function ReceiptDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [items, setItems] = useState<ReceiptItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetch(`/api/receipts/${id}`)
@@ -64,22 +66,68 @@ export default function ReceiptDetailPage() {
 
   const hasRewards = receipt.reward_card_number || receipt.reward_program_name || receipt.reward_points_current;
   const hasPayment = receipt.payment_method || receipt.card_last4;
+  // Rewrite legacy /uploads/ paths to the dynamic API route
+  const imageSrc = receipt.image_path?.startsWith('/uploads/')
+    ? receipt.image_path.replace('/uploads/', '/api/uploads/')
+    : receipt.image_path;
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/receipts/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error((await res.json()).error || 'Delete failed');
+      router.push('/receipts');
+    } catch (err) {
+      setError(String(err));
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
-      <Link href="/receipts" className="text-gray-400 hover:text-gray-600 text-sm inline-block">← Receipts</Link>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Link href="/receipts" className="text-gray-400 hover:text-gray-600 text-sm inline-block">← Receipts</Link>
+        {confirmDelete ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Delete this receipt?</span>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '0.5px solid var(--border-medium)', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', fontFamily: 'inherit' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: 'none', background: '#993c1d', color: 'white', cursor: deleting ? 'default' : 'pointer', fontFamily: 'inherit', opacity: deleting ? 0.6 : 1 }}
+            >
+              {deleting ? 'Deleting…' : 'Delete'}
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '0.5px solid var(--border-medium)', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5 }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+            Delete
+          </button>
+        )}
+      </div>
 
       {/* Header */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex flex-col sm:flex-row sm:items-start gap-6">
-          {receipt.image_path && (
+          {imageSrc && (
             <div className="flex-shrink-0">
-              <Image
-                src={receipt.image_path}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imageSrc}
                 alt="Receipt"
-                width={140}
-                height={200}
-                className="rounded-lg border border-gray-200 object-cover"
+                style={{ width: 140, borderRadius: 8, border: '1px solid #e5e7eb', display: 'block' }}
               />
             </div>
           )}

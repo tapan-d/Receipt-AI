@@ -4,7 +4,7 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import { extractReceiptFromImage } from '@/lib/extract';
 import { embedTexts, buildItemEmbedText } from '@/lib/embed';
-import { saveReceipt } from '@/lib/db';
+import { saveReceipt, getAllReceipts } from '@/lib/db';
 import type { Receipt, ReceiptItem } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
@@ -26,6 +26,26 @@ export async function POST(request: NextRequest) {
     await writeFile(uploadPath, buffer);
 
     const extracted = await extractReceiptFromImage(imageBase64, mediaType);
+
+    if (!extracted.is_receipt) {
+      return NextResponse.json(
+        { error: extracted.rejection_reason || 'Image does not appear to be a receipt.' },
+        { status: 422 }
+      );
+    }
+
+    const existing = await getAllReceipts();
+    const duplicate = existing.find(
+      r => r.store_name.trim().toLowerCase() === extracted.store_name.trim().toLowerCase() &&
+           r.purchase_date === extracted.purchase_date &&
+           Math.abs(r.total - extracted.total) < 0.01
+    );
+    if (duplicate) {
+      return NextResponse.json(
+        { error: 'This receipt has already been uploaded.', duplicate: true, id: duplicate.id },
+        { status: 409 }
+      );
+    }
 
     const receiptId = randomUUID();
     const now = new Date().toISOString();
@@ -61,7 +81,7 @@ export async function POST(request: NextRequest) {
       reward_points_current: extracted.reward_points_current,
       reward_points_required: extracted.reward_points_required,
       pos_system: extracted.pos_system,
-      image_path: `/uploads/${fileName}`,
+      image_path: `/api/uploads/${fileName}`,
       item_count: extracted.items.length,
       created_at: now,
     };
