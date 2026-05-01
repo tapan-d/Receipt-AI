@@ -27,8 +27,15 @@ export default function DashboardQuery() {
     }}>
       {/* Label with AI icon */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-primary)', flexShrink: 0 }}>
-          <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, filter: 'drop-shadow(0 0 4px rgba(212,170,40,0.6))' }}>
+          <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z" fill="url(#starGold)" stroke="#c8960a" strokeWidth="0.5" strokeLinejoin="round"/>
+          <defs>
+            <linearGradient id="starGold" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#f9e077"/>
+              <stop offset="50%" stopColor="#d4aa28"/>
+              <stop offset="100%" stopColor="#b8860b"/>
+            </linearGradient>
+          </defs>
         </svg>
         <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>
           Ask anything about your spending

@@ -5,9 +5,14 @@ import { randomUUID } from 'crypto';
 import { extractReceiptFromImage } from '@/lib/extract';
 import { embedTexts, buildItemEmbedText } from '@/lib/embed';
 import { saveReceipt, getAllReceipts } from '@/lib/db';
+import { requireAuth } from '@/lib/session';
 import type { Receipt, ReceiptItem } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
+  const authResult = await requireAuth();
+  if (authResult instanceof NextResponse) return authResult;
+  const { userId } = authResult;
+
   try {
     const formData = await request.formData();
     const file = formData.get('image') as File | null;
@@ -34,7 +39,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const existing = await getAllReceipts();
+    const existing = await getAllReceipts(userId);
     const duplicate = existing.find(
       r => r.store_name.trim().toLowerCase() === extracted.store_name.trim().toLowerCase() &&
            r.purchase_date === extracted.purchase_date &&
@@ -58,6 +63,7 @@ export async function POST(request: NextRequest) {
 
     const receipt: Receipt = {
       id: receiptId,
+      user_id: userId,
       store_name: extracted.store_name,
       store_address: extracted.store_address,
       store_phone: extracted.store_phone,
@@ -89,6 +95,7 @@ export async function POST(request: NextRequest) {
     const items: ReceiptItem[] = extracted.items.map((item, i) => ({
       id: randomUUID(),
       receipt_id: receiptId,
+      user_id: userId,
       store_name: extracted.store_name,
       purchase_date: extracted.purchase_date,
       item_name: item.name,

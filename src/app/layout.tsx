@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import Navigation from '@/components/Navigation';
+import Providers from '@/components/Providers';
+import AppShell from '@/components/AppShell';
 
 export const metadata: Metadata = {
-  title: 'Ledger',
+  title: 'Ledger.AI',
   description: 'Snap your receipts, see exactly where your money goes.',
 };
 
@@ -11,10 +12,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <Navigation />
-        <main style={{ maxWidth: 880, margin: '0 auto', padding: '24px 28px 64px' }}>
-          {children}
-        </main>
+        <Providers>
+          <AppShell>{children}</AppShell>
+        </Providers>
       </body>
     </html>
   );

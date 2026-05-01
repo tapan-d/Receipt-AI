@@ -16,19 +16,20 @@ async function getDb(): Promise<lancedb.Connection> {
 async function getReceiptItemsTable() {
   const conn = await getDb();
   const tables = await conn.tableNames();
-  if (!tables.includes('receipt_items')) {
-    return null;
-  }
+  if (!tables.includes('receipt_items')) return null;
   return conn.openTable('receipt_items');
 }
 
 async function getReceiptsTable() {
   const conn = await getDb();
   const tables = await conn.tableNames();
-  if (!tables.includes('receipts')) {
-    return null;
-  }
+  if (!tables.includes('receipts')) return null;
   return conn.openTable('receipts');
+}
+
+// Strip single quotes from userId before embedding in SQL predicates.
+function safe(s: string): string {
+  return s.replace(/'/g, '');
 }
 
 export async function saveReceipt(receipt: Receipt, items: ReceiptItem[]): Promise<void> {
@@ -52,18 +53,28 @@ export async function saveReceipt(receipt: Receipt, items: ReceiptItem[]): Promi
   }
 }
 
-export async function getAllReceipts(): Promise<Receipt[]> {
+export async function getAllReceipts(userId: string): Promise<Receipt[]> {
   const tbl = await getReceiptsTable();
   if (!tbl) return [];
-  const rows = await tbl.query().toArray();
-  return rows as unknown as Receipt[];
+  try {
+    const rows = await tbl.query().where(`user_id = '${safe(userId)}'`).toArray();
+    return rows as unknown as Receipt[];
+  } catch {
+    return []; // schema predates user_id column
+  }
 }
 
-export async function getReceiptById(id: string): Promise<Receipt | null> {
+export async function getReceiptById(id: string, userId: string): Promise<Receipt | null> {
   const tbl = await getReceiptsTable();
   if (!tbl) return null;
-  const rows = await tbl.query().where(`id = '${id}'`).toArray();
-  return rows.length > 0 ? (rows[0] as unknown as Receipt) : null;
+  try {
+    const rows = await tbl.query()
+      .where(`id = '${id}' AND user_id = '${safe(userId)}'`)
+      .toArray();
+    return rows.length > 0 ? (rows[0] as unknown as Receipt) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function getItemsByReceiptId(receiptId: string): Promise<ReceiptItem[]> {
@@ -73,25 +84,39 @@ export async function getItemsByReceiptId(receiptId: string): Promise<ReceiptIte
   return rows as unknown as ReceiptItem[];
 }
 
+export async function getAllItems(userId: string): Promise<ReceiptItem[]> {
+  const tbl = await getReceiptItemsTable();
+  if (!tbl) return [];
+  try {
+    const rows = await tbl.query().where(`user_id = '${safe(userId)}'`).toArray();
+    return rows as unknown as ReceiptItem[];
+  } catch {
+    return []; // schema predates user_id column
+  }
+}
+
 export async function searchItemsByVector(
   queryVector: number[],
-  limit = 100,
-  filter?: string
+  limit: number,
+  userId: string,
 ): Promise<ReceiptItem[]> {
   const tbl = await getReceiptItemsTable();
   if (!tbl) return [];
-
-  let search = tbl.vectorSearch(queryVector).limit(limit);
-  if (filter) {
-    search = search.where(filter);
+  try {
+    const rows = await tbl
+      .vectorSearch(queryVector)
+      .limit(limit)
+      .where(`user_id = '${safe(userId)}'`)
+      .toArray();
+    return rows as unknown as ReceiptItem[];
+  } catch {
+    return [];
   }
-  const rows = await search.toArray();
-  return rows as unknown as ReceiptItem[];
 }
 
-export async function getReceiptsByIds(ids: string[]): Promise<Receipt[]> {
+export async function getReceiptsByIds(ids: string[], userId: string): Promise<Receipt[]> {
   if (ids.length === 0) return [];
-  const results = await Promise.all(ids.map(id => getReceiptById(id)));
+  const results = await Promise.all(ids.map(id => getReceiptById(id, userId)));
   return results.filter((r): r is Receipt => r !== null);
 }
 
@@ -106,11 +131,4 @@ export async function deleteReceipt(id: string): Promise<void> {
     const tbl = await conn.openTable('receipt_items');
     await tbl.delete(`receipt_id = '${id}'`);
   }
-}
-
-export async function getAllItems(): Promise<ReceiptItem[]> {
-  const tbl = await getReceiptItemsTable();
-  if (!tbl) return [];
-  const rows = await tbl.query().toArray();
-  return rows as unknown as ReceiptItem[];
 }

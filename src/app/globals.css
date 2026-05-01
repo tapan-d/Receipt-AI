@@ -41,4 +41,17 @@
     -moz-osx-font-smoothing: grayscale;
     line-height: 1.5;
   }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin 1s linear infinite; }
+
+  .receipt-row:hover {
+    background: var(--bg-secondary) !important;
+    border-color: var(--border-medium) !important;
+  }
+
+  @media (min-width: 640px) {
+    .sign-in-left { display: flex !important; }
+    .sign-in-mobile-logo { display: none !important; }
+  }
 }

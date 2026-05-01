@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function NavUploadButton() {
+export default function UploadFAB() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -39,23 +39,45 @@ export default function NavUploadButton() {
         onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); }}
       />
       <button
-        aria-label="Upload receipt"
+        aria-label="Add receipt"
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
         style={{
-          width: 32, height: 32, padding: 0,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          border: '0.5px solid var(--border-light)', background: 'transparent',
-          borderRadius: 8, cursor: uploading ? 'default' : 'pointer',
-          color: uploading ? 'var(--text-tertiary)' : 'var(--text-secondary)',
+          position: 'fixed',
+          bottom: 28,
+          right: 28,
+          width: 56,
+          height: 56,
+          borderRadius: '50%',
+          background: 'var(--text-primary)',
+          color: 'white',
+          border: 'none',
+          cursor: uploading ? 'default' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.1)',
+          zIndex: 50,
+          transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+          opacity: uploading ? 0.7 : 1,
+        }}
+        onMouseEnter={e => {
+          if (!uploading) {
+            e.currentTarget.style.transform = 'scale(1.08)';
+            e.currentTarget.style.boxShadow = '0 6px 22px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.12)';
+          }
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.1)';
         }}
       >
         {uploading ? (
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="spin">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="spin">
             <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
           </svg>
         ) : (
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
             <circle cx="12" cy="13" r="4"/>
           </svg>

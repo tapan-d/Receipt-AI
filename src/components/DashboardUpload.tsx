@@ -43,9 +43,9 @@ export default function DashboardUpload() {
       style={{
         display: 'block',
         background: isDragging ? 'var(--bg-tertiary)' : 'var(--bg-secondary)',
-        border: `1.5px dashed ${isDragging ? 'var(--text-tertiary)' : 'var(--border-medium)'}`,
+        border: `1px solid ${isDragging ? 'var(--border-medium)' : 'var(--border-light)'}`,
         borderRadius: 12,
-        padding: '20px 24px 18px',
+        padding: '36px 24px 28px',
         textAlign: 'center',
         cursor: state === 'uploading' ? 'default' : 'pointer',
         transition: 'background 0.15s, border-color 0.15s',
@@ -67,7 +67,7 @@ export default function DashboardUpload() {
         transition: 'transform 0.2s ease',
       }}>
         {state === 'uploading' ? (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="spin">
             <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
           </svg>
         ) : (
@@ -94,7 +94,6 @@ export default function DashboardUpload() {
         </button>
       )}
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </label>
   );
 }

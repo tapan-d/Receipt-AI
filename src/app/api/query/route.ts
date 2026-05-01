@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { embedText } from '@/lib/embed';
 import { searchItemsByVector, getReceiptsByIds } from '@/lib/db';
+import { requireAuth } from '@/lib/session';
 
 const client = new Anthropic();
 
@@ -14,6 +15,10 @@ Use both sections to answer questions accurately. Do calculations when needed.
 Be concise and helpful. Format currency as USD. If the data is insufficient, say so clearly.`;
 
 export async function POST(request: NextRequest) {
+  const authResult = await requireAuth();
+  if (authResult instanceof NextResponse) return authResult;
+  const { userId } = authResult;
+
   try {
     const { question } = await request.json();
     if (!question || typeof question !== 'string') {
@@ -21,14 +26,14 @@ export async function POST(request: NextRequest) {
     }
 
     const queryVector = await embedText(question);
-    const items = await searchItemsByVector(queryVector, 100);
+    const items = await searchItemsByVector(queryVector, 100, userId);
 
     if (items.length === 0) {
       return NextResponse.json({ answer: 'No receipt data found. Please upload some receipts first.' });
     }
 
     const uniqueReceiptIds = [...new Set(items.map(i => i.receipt_id))];
-    const receipts = await getReceiptsByIds(uniqueReceiptIds);
+    const receipts = await getReceiptsByIds(uniqueReceiptIds, userId);
     const receiptMap = new Map(receipts.map(r => [r.id, r]));
 
     const receiptSummaries = receipts.map(r => {

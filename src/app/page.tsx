@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import DashboardUpload from '@/components/DashboardUpload';
 import DashboardQuery from '@/components/DashboardQuery';
 import { getAllReceipts, getAllItems } from '@/lib/db';
+import { auth } from '@/auth';
 import type { Receipt } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -42,12 +44,24 @@ function relativeDate(dateStr: string): string {
   return `${months[parseInt(m) - 1]} ${parseInt(d)}`;
 }
 
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+const EYEBROW: React.CSSProperties = {
+  fontSize: 11, fontWeight: 600, letterSpacing: '0.07em',
+  textTransform: 'uppercase', color: 'var(--text-tertiary)',
+  margin: 0,
+};
+
 export default async function Home() {
+  const session = await auth();
+  const userId = session?.user?.email;
+  if (!userId) redirect('/sign-in');
+
   let receipts: Receipt[] = [];
   let categoryTotals: Record<string, number> = {};
 
   try {
-    const [allReceipts, allItems] = await Promise.all([getAllReceipts(), getAllItems()]);
+    const [allReceipts, allItems] = await Promise.all([getAllReceipts(userId), getAllItems(userId)]);
     receipts = allReceipts;
 
     const now = new Date();
@@ -61,9 +75,36 @@ export default async function Home() {
       }
     }
   } catch {
-    // DB not initialised yet — show empty state
+    // DB not initialised yet
   }
 
+  // ── Empty state ───────────────────────────────────────────────────────────
+  if (receipts.length === 0) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 40, gap: 36 }}>
+        <div style={{ width: '100%', maxWidth: 420 }}>
+          <DashboardUpload />
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ ...EYEBROW, marginBottom: 14 }}>What you&apos;ll see</p>
+          <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 10, textAlign: 'left' }}>
+            {[
+              'Spending breakdown by category',
+              'Monthly totals and trends',
+              'AI-powered spending queries',
+            ].map(text => (
+              <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--text-tertiary)', flexShrink: 0 }} />
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Data view ─────────────────────────────────────────────────────────────
   const now = new Date();
   const thisMonth = now.toISOString().slice(0, 7);
   const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -79,7 +120,7 @@ export default async function Home() {
   if (lastMonthTotal > 0) {
     const pct = Math.abs(((totalThisMonth - lastMonthTotal) / lastMonthTotal) * 100).toFixed(0);
     deltaSuccess = totalThisMonth <= lastMonthTotal;
-    deltaText = `${deltaSuccess ? '↓' : '↑'} ${pct}% vs last month`;
+    deltaText = `${deltaSuccess ? '↓' : '↑'} ${pct}% vs ${MONTHS[lastMonthDate.getMonth()]}`;
   }
 
   const categories = Object.entries(categoryTotals)
@@ -87,87 +128,70 @@ export default async function Home() {
     .sort((a, b) => b.total - a.total)
     .slice(0, 6);
   const maxCatTotal = categories[0]?.total ?? 1;
+  const categoryGrandTotal = categories.reduce((s, c) => s + c.total, 0) || 1;
 
   const recentReceipts = [...receipts]
     .sort((a, b) => (a.purchase_date < b.purchase_date ? 1 : -1))
     .slice(0, 4);
 
+  const monthLabel = `${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
 
-      {/* Greeting */}
+      {/* Hero metric */}
       <section>
-        <h1 style={{ fontSize: 28, fontWeight: 500, margin: '0 0 4px', letterSpacing: '-0.025em' }}>Hi Tapan</h1>
-        <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>
-          Snap your receipts, see exactly where your money goes.
-        </p>
+        <p style={{ ...EYEBROW, marginBottom: 12 }}>{monthLabel}</p>
+        <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: '20px 22px' }}>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '0 0 4px' }}>Spent this month</p>
+          <p style={{ fontSize: 42, fontWeight: 600, margin: 0, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
+            ${totalThisMonth.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </p>
+          {deltaText && (
+            <span style={{
+              display: 'inline-block', marginTop: 8,
+              fontSize: 12, fontWeight: 500, padding: '3px 9px', borderRadius: 20,
+              background: deltaSuccess ? 'rgba(15,110,86,0.1)' : 'rgba(153,60,29,0.1)',
+              color: deltaSuccess ? 'var(--success-text)' : 'var(--danger-text)',
+            }}>
+              {deltaText}
+            </span>
+          )}
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '10px 0 0' }}>
+            {receipts.length} receipts · {totalItemCount} items tracked
+          </p>
+        </div>
       </section>
-
-      {/* Upload zone */}
-      <DashboardUpload />
 
       {/* Query */}
       <DashboardQuery />
 
-      {/* Metrics */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
-        {[
-          {
-            label: 'Spent this month',
-            value: `$${totalThisMonth.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
-            delta: deltaText,
-            deltaSuccess,
-          },
-          {
-            label: 'Receipts captured',
-            value: String(receipts.length),
-            delta: `${totalItemCount} line items tracked`,
-            deltaSuccess: null,
-          },
-        ].map(m => (
-          <div key={m.label} style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '16px 18px' }}>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '0 0 6px' }}>{m.label}</p>
-            <p style={{ fontSize: 26, fontWeight: 500, margin: 0, letterSpacing: '-0.025em', fontVariantNumeric: 'tabular-nums' }}>{m.value}</p>
-            {m.delta && (
-              <p style={{
-                fontSize: 12, margin: '4px 0 0',
-                color: m.deltaSuccess === true ? 'var(--success-text)'
-                     : m.deltaSuccess === false ? 'var(--danger-text)'
-                     : 'var(--text-secondary)',
-              }}>
-                {m.delta}
-              </p>
-            )}
-          </div>
-        ))}
-      </section>
-
       {/* Category breakdown */}
       {categories.length > 0 && (
-        <section style={{ border: '0.5px solid var(--border-light)', borderRadius: 12, padding: '20px 22px' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18 }}>
-            <p style={{ fontSize: 15, fontWeight: 500, margin: 0, letterSpacing: '-0.01em' }}>Spending by category</p>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>This month</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 32px' }}>
-            {categories.map(({ category, total }) => (
-              <div key={category} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span>{category}</span>
-                  <span style={{ color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
-                    ${total.toFixed(2)}
-                  </span>
+        <section>
+          <p style={{ ...EYEBROW, marginBottom: 14 }}>Spending by category</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {categories.map(({ category, total }) => {
+              const pct = Math.round((total / categoryGrandTotal) * 100);
+              return (
+                <div key={category}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                    <span>{category}</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      ${total.toFixed(0)}
+                      <span style={{ color: 'var(--text-tertiary)', marginLeft: 6 }}>{pct}%</span>
+                    </span>
+                  </div>
+                  <div style={{ height: 8, background: 'var(--bg-tertiary)', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', borderRadius: 4,
+                      width: `${(total / maxCatTotal) * 100}%`,
+                      background: CATEGORY_COLORS[category] ?? 'var(--cat-other)',
+                    }} />
+                  </div>
                 </div>
-                <div style={{ height: 6, background: 'var(--bg-secondary)', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%', borderRadius: 3,
-                    width: `${(total / maxCatTotal) * 100}%`,
-                    background: CATEGORY_COLORS[category] ?? 'var(--cat-other)',
-                    transition: 'width 0.4s ease',
-                  }} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}
@@ -176,21 +200,19 @@ export default async function Home() {
       {recentReceipts.length > 0 && (
         <section>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <p style={{ fontSize: 15, fontWeight: 500, margin: 0, letterSpacing: '-0.01em' }}>Recent receipts</p>
+            <p style={EYEBROW}>Recent receipts</p>
             <Link href="/receipts" style={{
-              fontSize: 12, padding: '6px 12px',
-              border: '0.5px solid var(--border-light)', borderRadius: 8,
-              color: 'var(--text-secondary)', textDecoration: 'none',
-              transition: 'background 0.15s',
+              fontSize: 12, color: 'var(--text-secondary)',
+              textDecoration: 'none',
             }}>
-              View all
+              View all →
             </Link>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {recentReceipts.map((r, i) => {
               const tint = TINTS[i % 4];
               return (
-                <Link key={r.id} href={`/receipts/${r.id}`} style={{
+                <Link key={r.id} href={`/receipts/${r.id}`} className="receipt-row" style={{
                   display: 'grid', gridTemplateColumns: '36px 1fr auto auto',
                   gap: 14, alignItems: 'center', padding: '12px 14px',
                   background: 'var(--bg-primary)',
@@ -199,7 +221,7 @@ export default async function Home() {
                   transition: 'background 0.15s, border-color 0.15s',
                 }}>
                   <span style={{
-                    width: 32, height: 32, borderRadius: 8,
+                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 11, fontWeight: 500,
                     background: tint.bg, color: tint.fg,
@@ -221,13 +243,6 @@ export default async function Home() {
             })}
           </div>
         </section>
-      )}
-
-      {/* Empty state */}
-      {receipts.length === 0 && (
-        <p style={{ fontSize: 14, color: 'var(--text-tertiary)', textAlign: 'center', paddingTop: 8 }}>
-          Upload your first receipt above to get started.
-        </p>
       )}
 
     </div>

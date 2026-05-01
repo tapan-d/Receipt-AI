@@ -1,6 +1,7 @@
 export interface ReceiptItem {
   id: string;
   receipt_id: string;
+  user_id: string;
   store_name: string;
   purchase_date: string;
   item_name: string;
@@ -13,6 +14,7 @@ export interface ReceiptItem {
 
 export interface Receipt {
   id: string;
+  user_id: string;
   // Store
   store_name: string;
   store_address: string;

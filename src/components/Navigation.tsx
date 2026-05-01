@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import NavUploadButton from './NavUploadButton';
 
 const NAV = [
@@ -13,6 +14,7 @@ const NAV = [
 
 export default function Navigation() {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   return (
     <header style={{
@@ -44,7 +46,7 @@ export default function Navigation() {
               </svg>
             </span>
             <span style={{ fontWeight: 500, fontSize: 15, letterSpacing: '-0.01em', color: 'var(--text-primary)' }}>
-              Ledger
+              Ledger.AI
             </span>
           </Link>
 
@@ -76,20 +78,23 @@ export default function Navigation() {
           </nav>
         </div>
 
-        {/* Right: upload + settings */}
+        {/* Right: upload + avatar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <NavUploadButton />
-        <button aria-label="Settings" style={{
-          width: 32, height: 32, padding: 0,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          border: '0.5px solid var(--border-light)', background: 'transparent',
-          borderRadius: 8, cursor: 'pointer', color: 'var(--text-secondary)',
-        }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-        </button>
+          <NavUploadButton />
+          <Link href="/profile" aria-label="Profile" style={{
+            width: 32, height: 32, borderRadius: 8, overflow: 'hidden', flexShrink: 0,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            border: '0.5px solid var(--border-light)',
+            background: session?.user?.image ? 'transparent' : 'var(--bg-secondary)',
+            textDecoration: 'none', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500,
+          }}>
+            {session?.user?.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={session.user.image} alt="" width={32} height={32} style={{ display: 'block' }} />
+            ) : (
+              <span>{session?.user?.name?.slice(0, 1).toUpperCase() ?? '?'}</span>
+            )}
+          </Link>
         </div>
       </div>
     </header>
