@@ -5,10 +5,10 @@ import Link from 'next/link';
 import type { Receipt } from '@/lib/types';
 
 const TINTS = [
-  { bg: 'var(--tint-purple-bg)', fg: 'var(--tint-purple-fg)' },
+  { bg: 'var(--tint-blue-bg)',   fg: 'var(--tint-blue-fg)' },
   { bg: 'var(--tint-coral-bg)',  fg: 'var(--tint-coral-fg)' },
-  { bg: 'var(--tint-teal-bg)',   fg: 'var(--tint-teal-fg)' },
-  { bg: 'var(--tint-pink-bg)',   fg: 'var(--tint-pink-fg)' },
+  { bg: 'var(--tint-green-bg)',  fg: 'var(--tint-green-fg)' },
+  { bg: 'var(--tint-purple-bg)', fg: 'var(--tint-purple-fg)' },
 ];
 
 function initials(name: string) {

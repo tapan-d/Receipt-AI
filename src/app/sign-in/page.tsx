@@ -10,7 +10,7 @@ export default function SignInPage() {
       <div style={{
         display: 'none',
         flex: '1',
-        background: 'var(--text-primary)',
+        background: 'var(--accent)',
         padding: '48px',
         flexDirection: 'column',
         justifyContent: 'space-between',

@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Navigation from './Navigation';
-import UploadFAB from './UploadFAB';
+import FloatingBar from './FloatingBar';
 
 const AUTH_ROUTES = ['/sign-in'];
 
@@ -16,7 +16,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <main style={isAuth ? {} : { maxWidth: 880, margin: '0 auto', padding: '24px 28px 96px' }}>
         {children}
       </main>
-      {!isAuth && <UploadFAB />}
+      {!isAuth && <FloatingBar />}
     </>
   );
 }

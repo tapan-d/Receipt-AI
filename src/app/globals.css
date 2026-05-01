@@ -1,42 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @layer base {
   :root {
     --bg-primary:    #ffffff;
-    --bg-secondary:  #f5f3ed;
-    --bg-tertiary:   #ebe9e0;
-    --text-primary:  #1a1a1a;
-    --text-secondary:#5f5e5a;
-    --text-tertiary: #888780;
-    --border-light:  rgba(0,0,0,0.08);
-    --border-medium: rgba(0,0,0,0.18);
-    --success-text:  #0f6e56;
-    --danger-text:   #993c1d;
+    --bg-secondary:  #f4f4f5;
+    --bg-tertiary:   #e4e4e7;
+    --text-primary:  #09090b;
+    --text-secondary:#52525b;
+    --text-tertiary: #71717a;
+    --border-light:  #e4e4e7;
+    --border-medium: #d4d4d8;
+    --success-text:  #16a34a;
+    --danger-text:   #dc2626;
+    --accent:        #2563eb;
+    --accent-subtle: #eff6ff;
+    --accent-fg:     #1d4ed8;
 
     --cat-dairy:    #534ab7;
-    --cat-produce:  #1d9e75;
-    --cat-meat:     #d85a30;
-    --cat-bakery:   #e07838;
-    --cat-beverage: #3b82f6;
+    --cat-produce:  #16a34a;
+    --cat-meat:     #dc2626;
+    --cat-bakery:   #ea580c;
+    --cat-beverage: #2563eb;
     --cat-snack:    #9333ea;
-    --cat-frozen:   #06b6d4;
-    --cat-canned:   #888780;
+    --cat-frozen:   #0891b2;
+    --cat-canned:   #71717a;
     --cat-oils:     #d97706;
-    --cat-household:#64748b;
-    --cat-personal: #d4537e;
-    --cat-other:    #b4b2a9;
+    --cat-household:#475569;
+    --cat-personal: #db2777;
+    --cat-other:    #a1a1aa;
 
-    --tint-purple-bg:#eeedfe; --tint-purple-fg:#3c3489;
-    --tint-coral-bg: #faece7; --tint-coral-fg: #712b13;
-    --tint-teal-bg:  #e1f5ee; --tint-teal-fg:  #085041;
-    --tint-pink-bg:  #fbeaf0; --tint-pink-fg:  #72243e;
+    --tint-blue-bg:   #eff6ff; --tint-blue-fg:   #1d4ed8;
+    --tint-coral-bg:  #fef2f2; --tint-coral-fg:  #991b1b;
+    --tint-green-bg:  #f0fdf4; --tint-green-fg:  #166534;
+    --tint-purple-bg: #faf5ff; --tint-purple-fg: #7e22ce;
   }
 
   *, *::before, *::after { box-sizing: border-box; }
 
   body {
-    background: var(--bg-primary);
+    background: #fafafa;
     color: var(--text-primary);
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     line-height: 1.5;

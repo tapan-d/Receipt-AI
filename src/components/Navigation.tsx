@@ -36,7 +36,7 @@ export default function Navigation() {
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
             <span style={{
               width: 28, height: 28, borderRadius: 8,
-              background: 'var(--text-primary)',
+              background: 'var(--accent)',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               color: 'white', flexShrink: 0,
             }}>
@@ -65,8 +65,8 @@ export default function Navigation() {
               ) : (
                 <Link key={label} href={href!} style={{
                   fontSize: 13, padding: '6px 12px', borderRadius: 8,
-                  color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  background: active ? 'var(--bg-secondary)' : 'transparent',
+                  color: active ? 'var(--accent-fg)' : 'var(--text-secondary)',
+                  background: active ? 'var(--accent-subtle)' : 'transparent',
                   fontWeight: active ? 500 : 400,
                   textDecoration: 'none',
                   transition: 'background 0.15s, color 0.15s',

@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import DashboardUpload from '@/components/DashboardUpload';
-import DashboardQuery from '@/components/DashboardQuery';
 import { getAllReceipts, getAllItems } from '@/lib/db';
 import { auth } from '@/auth';
 import type { Receipt } from '@/lib/types';
@@ -24,10 +23,10 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const TINTS = [
-  { bg: 'var(--tint-purple-bg)', fg: 'var(--tint-purple-fg)' },
+  { bg: 'var(--tint-blue-bg)',   fg: 'var(--tint-blue-fg)' },
   { bg: 'var(--tint-coral-bg)',  fg: 'var(--tint-coral-fg)' },
-  { bg: 'var(--tint-teal-bg)',   fg: 'var(--tint-teal-fg)' },
-  { bg: 'var(--tint-pink-bg)',   fg: 'var(--tint-pink-fg)' },
+  { bg: 'var(--tint-green-bg)',  fg: 'var(--tint-green-fg)' },
+  { bg: 'var(--tint-purple-bg)', fg: 'var(--tint-purple-fg)' },
 ];
 
 function initials(name: string) {
@@ -162,9 +161,6 @@ export default async function Home() {
           </p>
         </div>
       </section>
-
-      {/* Query */}
-      <DashboardQuery />
 
       {/* Category breakdown */}
       {categories.length > 0 && (

@@ -61,7 +61,7 @@ export default function DashboardUpload() {
 
       <div style={{
         width: 56, height: 56, borderRadius: '50%',
-        background: 'var(--text-primary)',
+        background: 'var(--accent)',
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         marginBottom: 10, color: 'white',
         transition: 'transform 0.2s ease',
