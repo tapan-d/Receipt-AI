@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
-import path from 'path';
 import { randomUUID } from 'crypto';
 import { extractReceiptFromImage } from '@/lib/extract';
 import { embedTexts, buildItemEmbedText } from '@/lib/embed';
 import { saveReceipt, getAllReceipts } from '@/lib/db';
+import { uploadToR2 } from '@/lib/r2';
 import { requireAuth } from '@/lib/session';
 import type { Receipt, ReceiptItem } from '@/lib/types';
 
@@ -24,11 +23,6 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
     const imageBase64 = buffer.toString('base64');
     const mediaType = file.type || 'image/jpeg';
-
-    const ext = file.name.split('.').pop() || 'jpg';
-    const fileName = `${randomUUID()}.${ext}`;
-    const uploadPath = path.join(process.cwd(), 'public', 'uploads', fileName);
-    await writeFile(uploadPath, buffer);
 
     const extracted = await extractReceiptFromImage(imageBase64, mediaType);
 
@@ -53,6 +47,10 @@ export async function POST(request: NextRequest) {
     }
 
     const receiptId = randomUUID();
+    const ext = file.name.split('.').pop() || 'jpg';
+    const imageKey = `receipts/${receiptId}.${ext}`;
+    await uploadToR2(imageKey, buffer, mediaType);
+
     const now = new Date().toISOString();
 
     const embedTextsInput = extracted.items.map(item =>
@@ -87,7 +85,7 @@ export async function POST(request: NextRequest) {
       reward_points_current: extracted.reward_points_current,
       reward_points_required: extracted.reward_points_required,
       pos_system: extracted.pos_system,
-      image_path: `/api/uploads/${fileName}`,
+      image_path: imageKey,
       item_count: extracted.items.length,
       created_at: now,
     };

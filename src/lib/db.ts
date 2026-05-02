@@ -1,98 +1,144 @@
-import * as lancedb from '@lancedb/lancedb';
-import path from 'path';
+import { neon } from '@neondatabase/serverless';
 import type { Receipt, ReceiptItem } from './types';
 
-const DB_PATH = path.join(process.cwd(), 'data', 'lancedb');
-
-let db: lancedb.Connection | null = null;
-
-async function getDb(): Promise<lancedb.Connection> {
-  if (!db) {
-    db = await lancedb.connect(DB_PATH);
-  }
-  return db;
+function getDb() {
+  return neon(process.env.DATABASE_URL!);
 }
 
-async function getReceiptItemsTable() {
-  const conn = await getDb();
-  const tables = await conn.tableNames();
-  if (!tables.includes('receipt_items')) return null;
-  return conn.openTable('receipt_items');
+// Runs once per process instance — CREATE IF NOT EXISTS is idempotent
+let schemaInit: Promise<void> | null = null;
+
+async function ensureSchema(): Promise<void> {
+  const sql = getDb();
+  await sql`CREATE EXTENSION IF NOT EXISTS vector`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS receipts (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      store_name TEXT, store_address TEXT, store_phone TEXT,
+      store_website TEXT, store_number TEXT,
+      purchase_date TEXT, purchase_time TEXT,
+      employee_name TEXT, order_number TEXT,
+      subtotal FLOAT8, discount FLOAT8, tax_rate FLOAT8,
+      tax_amount FLOAT8, total FLOAT8,
+      payment_method TEXT, payment_amount FLOAT8,
+      card_last4 TEXT, card_aid TEXT,
+      reward_card_number TEXT, reward_program_name TEXT,
+      reward_points_current FLOAT8, reward_points_required FLOAT8,
+      pos_system TEXT, image_path TEXT,
+      item_count INT, created_at TEXT
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS receipt_items (
+      id TEXT PRIMARY KEY,
+      receipt_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      store_name TEXT, purchase_date TEXT,
+      item_name TEXT, category TEXT,
+      quantity FLOAT8, unit_price FLOAT8, total_price FLOAT8,
+      vector vector(1024)
+    )
+  `;
 }
 
-async function getReceiptsTable() {
-  const conn = await getDb();
-  const tables = await conn.tableNames();
-  if (!tables.includes('receipts')) return null;
-  return conn.openTable('receipts');
-}
-
-// Strip single quotes from userId before embedding in SQL predicates.
-function safe(s: string): string {
-  return s.replace(/'/g, '');
+function ready(): Promise<void> {
+  if (!schemaInit) schemaInit = ensureSchema();
+  return schemaInit;
 }
 
 export async function saveReceipt(receipt: Receipt, items: ReceiptItem[]): Promise<void> {
-  const conn = await getDb();
-  const tables = await conn.tableNames();
+  await ready();
+  const sql = getDb();
 
-  if (!tables.includes('receipts')) {
-    await conn.createTable('receipts', [receipt] as unknown as Record<string, unknown>[]);
-  } else {
-    const tbl = await conn.openTable('receipts');
-    await tbl.add([receipt] as unknown as Record<string, unknown>[]);
-  }
+  await sql`
+    INSERT INTO receipts (
+      id, user_id, store_name, store_address, store_phone,
+      store_website, store_number, purchase_date, purchase_time,
+      employee_name, order_number, subtotal, discount, tax_rate,
+      tax_amount, total, payment_method, payment_amount,
+      card_last4, card_aid, reward_card_number, reward_program_name,
+      reward_points_current, reward_points_required,
+      pos_system, image_path, item_count, created_at
+    ) VALUES (
+      ${receipt.id}, ${receipt.user_id}, ${receipt.store_name}, ${receipt.store_address},
+      ${receipt.store_phone}, ${receipt.store_website}, ${receipt.store_number},
+      ${receipt.purchase_date}, ${receipt.purchase_time}, ${receipt.employee_name},
+      ${receipt.order_number}, ${receipt.subtotal}, ${receipt.discount}, ${receipt.tax_rate},
+      ${receipt.tax_amount}, ${receipt.total}, ${receipt.payment_method}, ${receipt.payment_amount},
+      ${receipt.card_last4}, ${receipt.card_aid}, ${receipt.reward_card_number},
+      ${receipt.reward_program_name}, ${receipt.reward_points_current},
+      ${receipt.reward_points_required}, ${receipt.pos_system}, ${receipt.image_path},
+      ${receipt.item_count}, ${receipt.created_at}
+    )
+  `;
 
-  if (items.length > 0) {
-    if (!tables.includes('receipt_items')) {
-      await conn.createTable('receipt_items', items as unknown as Record<string, unknown>[]);
+  for (const item of items) {
+    if (item.vector.length > 0) {
+      const vec = `[${item.vector.join(',')}]`;
+      await sql`
+        INSERT INTO receipt_items (
+          id, receipt_id, user_id, store_name, purchase_date,
+          item_name, category, quantity, unit_price, total_price, vector
+        ) VALUES (
+          ${item.id}, ${item.receipt_id}, ${item.user_id}, ${item.store_name},
+          ${item.purchase_date}, ${item.item_name}, ${item.category},
+          ${item.quantity}, ${item.unit_price}, ${item.total_price}, ${vec}::vector
+        )
+      `;
     } else {
-      const tbl = await conn.openTable('receipt_items');
-      await tbl.add(items as unknown as Record<string, unknown>[]);
+      await sql`
+        INSERT INTO receipt_items (
+          id, receipt_id, user_id, store_name, purchase_date,
+          item_name, category, quantity, unit_price, total_price
+        ) VALUES (
+          ${item.id}, ${item.receipt_id}, ${item.user_id}, ${item.store_name},
+          ${item.purchase_date}, ${item.item_name}, ${item.category},
+          ${item.quantity}, ${item.unit_price}, ${item.total_price}
+        )
+      `;
     }
   }
 }
 
 export async function getAllReceipts(userId: string): Promise<Receipt[]> {
-  const tbl = await getReceiptsTable();
-  if (!tbl) return [];
-  try {
-    const rows = await tbl.query().where(`user_id = '${safe(userId)}'`).toArray();
-    return rows as unknown as Receipt[];
-  } catch {
-    return []; // schema predates user_id column
-  }
+  await ready();
+  const sql = getDb();
+  const rows = await sql`
+    SELECT * FROM receipts WHERE user_id = ${userId} ORDER BY purchase_date DESC, created_at DESC
+  `;
+  return rows as unknown as Receipt[];
 }
 
 export async function getReceiptById(id: string, userId: string): Promise<Receipt | null> {
-  const tbl = await getReceiptsTable();
-  if (!tbl) return null;
-  try {
-    const rows = await tbl.query()
-      .where(`id = '${id}' AND user_id = '${safe(userId)}'`)
-      .toArray();
-    return rows.length > 0 ? (rows[0] as unknown as Receipt) : null;
-  } catch {
-    return null;
-  }
+  await ready();
+  const sql = getDb();
+  const rows = await sql`
+    SELECT * FROM receipts WHERE id = ${id} AND user_id = ${userId}
+  `;
+  return rows.length > 0 ? (rows[0] as unknown as Receipt) : null;
 }
 
 export async function getItemsByReceiptId(receiptId: string): Promise<ReceiptItem[]> {
-  const tbl = await getReceiptItemsTable();
-  if (!tbl) return [];
-  const rows = await tbl.query().where(`receipt_id = '${receiptId}'`).toArray();
-  return rows as unknown as ReceiptItem[];
+  await ready();
+  const sql = getDb();
+  const rows = await sql`
+    SELECT id, receipt_id, user_id, store_name, purchase_date,
+           item_name, category, quantity, unit_price, total_price
+    FROM receipt_items WHERE receipt_id = ${receiptId}
+  `;
+  return rows.map(r => ({ ...r, vector: [] })) as unknown as ReceiptItem[];
 }
 
 export async function getAllItems(userId: string): Promise<ReceiptItem[]> {
-  const tbl = await getReceiptItemsTable();
-  if (!tbl) return [];
-  try {
-    const rows = await tbl.query().where(`user_id = '${safe(userId)}'`).toArray();
-    return rows as unknown as ReceiptItem[];
-  } catch {
-    return []; // schema predates user_id column
-  }
+  await ready();
+  const sql = getDb();
+  const rows = await sql`
+    SELECT id, receipt_id, user_id, store_name, purchase_date,
+           item_name, category, quantity, unit_price, total_price
+    FROM receipt_items WHERE user_id = ${userId}
+  `;
+  return rows.map(r => ({ ...r, vector: [] })) as unknown as ReceiptItem[];
 }
 
 export async function searchItemsByVector(
@@ -100,18 +146,18 @@ export async function searchItemsByVector(
   limit: number,
   userId: string,
 ): Promise<ReceiptItem[]> {
-  const tbl = await getReceiptItemsTable();
-  if (!tbl) return [];
-  try {
-    const rows = await tbl
-      .vectorSearch(queryVector)
-      .limit(limit)
-      .where(`user_id = '${safe(userId)}'`)
-      .toArray();
-    return rows as unknown as ReceiptItem[];
-  } catch {
-    return [];
-  }
+  await ready();
+  const sql = getDb();
+  const vec = `[${queryVector.join(',')}]`;
+  const rows = await sql`
+    SELECT id, receipt_id, user_id, store_name, purchase_date,
+           item_name, category, quantity, unit_price, total_price
+    FROM receipt_items
+    WHERE user_id = ${userId} AND vector IS NOT NULL
+    ORDER BY vector <=> ${vec}::vector
+    LIMIT ${limit}
+  `;
+  return rows.map(r => ({ ...r, vector: [] })) as unknown as ReceiptItem[];
 }
 
 export async function getReceiptsByIds(ids: string[], userId: string): Promise<Receipt[]> {
@@ -121,14 +167,8 @@ export async function getReceiptsByIds(ids: string[], userId: string): Promise<R
 }
 
 export async function deleteReceipt(id: string): Promise<void> {
-  const conn = await getDb();
-  const tables = await conn.tableNames();
-  if (tables.includes('receipts')) {
-    const tbl = await conn.openTable('receipts');
-    await tbl.delete(`id = '${id}'`);
-  }
-  if (tables.includes('receipt_items')) {
-    const tbl = await conn.openTable('receipt_items');
-    await tbl.delete(`receipt_id = '${id}'`);
-  }
+  await ready();
+  const sql = getDb();
+  await sql`DELETE FROM receipt_items WHERE receipt_id = ${id}`;
+  await sql`DELETE FROM receipts WHERE id = ${id}`;
 }

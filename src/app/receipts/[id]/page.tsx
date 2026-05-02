@@ -44,6 +44,7 @@ export default function ReceiptDetailPage() {
   const router = useRouter();
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [items, setItems] = useState<ReceiptItem[]>([]);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -54,7 +55,7 @@ export default function ReceiptDetailPage() {
       .then(r => r.json())
       .then(data => {
         if (data.error) setError(data.error);
-        else { setReceipt(data.receipt); setItems(data.items); }
+        else { setReceipt(data.receipt); setItems(data.items); setImageUrl(data.image_url ?? null); }
       })
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
@@ -66,10 +67,7 @@ export default function ReceiptDetailPage() {
 
   const hasRewards = receipt.reward_card_number || receipt.reward_program_name || receipt.reward_points_current;
   const hasPayment = receipt.payment_method || receipt.card_last4;
-  // Rewrite legacy /uploads/ paths to the dynamic API route
-  const imageSrc = receipt.image_path?.startsWith('/uploads/')
-    ? receipt.image_path.replace('/uploads/', '/api/uploads/')
-    : receipt.image_path;
+  const imageSrc = imageUrl;
 
   const handleDelete = async () => {
     setDeleting(true);

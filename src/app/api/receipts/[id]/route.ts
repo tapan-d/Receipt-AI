@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { unlink } from 'fs/promises';
-import path from 'path';
 import { getReceiptById, getItemsByReceiptId, deleteReceipt } from '@/lib/db';
+import { getPresignedImageUrl, deleteFromR2 } from '@/lib/r2';
 import { requireAuth } from '@/lib/session';
 
 export async function GET(
@@ -18,8 +17,11 @@ export async function GET(
     if (!receipt) {
       return NextResponse.json({ error: 'Receipt not found' }, { status: 404 });
     }
-    const items = await getItemsByReceiptId(id);
-    return NextResponse.json({ receipt, items });
+    const [items, image_url] = await Promise.all([
+      getItemsByReceiptId(id),
+      receipt.image_path ? getPresignedImageUrl(receipt.image_path) : Promise.resolve(null),
+    ]);
+    return NextResponse.json({ receipt, items, image_url });
   } catch (err) {
     console.error('Receipt detail error:', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
@@ -42,8 +44,7 @@ export async function DELETE(
     }
     await deleteReceipt(id);
     if (receipt.image_path) {
-      const filePath = path.join(process.cwd(), 'public', receipt.image_path);
-      await unlink(filePath).catch(() => {});
+      await deleteFromR2(receipt.image_path).catch(() => {});
     }
     return NextResponse.json({ ok: true });
   } catch (err) {

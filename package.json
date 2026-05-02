@@ -10,8 +10,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
-    "@lancedb/lancedb": "^0.27.2",
-    "@lancedb/lancedb-darwin-x64": "^0.22.3",
+    "@aws-sdk/client-s3": "^3.797.0",
+    "@aws-sdk/s3-request-presigner": "^3.797.0",
+    "@neondatabase/serverless": "^0.10.4",
     "next": "16.2.4",
     "next-auth": "^5.0.0-beta.31",
     "react": "19.2.4",
