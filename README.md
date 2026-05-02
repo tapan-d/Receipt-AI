@@ -10,7 +10,9 @@ flowchart TD
         UI_DASH["Dashboard"]
         UI_RX["Receipts / Detail"]
         UI_ITEMS["Items"]
+        UI_QUERY["Query (/query)"]
         UI_SIGNIN["Sign In"]
+        FAB["Floating Action Bar\n✨ Ask AI · 📷 Upload"]
     end
 
     subgraph API["Next.js API Routes (all auth-gated)"]
@@ -18,46 +20,51 @@ flowchart TD
         RT_RX["GET  /api/receipts\nGET  /api/receipts/[id]\nDELETE /api/receipts/[id]"]
         RT_ITEMS["GET /api/items"]
         RT_QR["POST /api/query"]
-        RT_IMG["GET /api/uploads/[filename]"]
         RT_AUTH["GET|POST /api/auth/[...nextauth]"]
     end
 
     subgraph Lib["Library Layer"]
         EXTRACT["extract.ts — Claude Vision"]
         EMBED["embed.ts — Voyage AI"]
-        DB["db.ts — LanceDB (user-scoped)"]
+        DB["db.ts — Neon/pgvector"]
+        R2_LIB["r2.ts — Cloudflare R2"]
         SESSION["session.ts — requireAuth()"]
     end
 
     subgraph External["External APIs"]
         CLAUDE["Anthropic claude-opus-4-7"]
-        VOYAGE["Voyage AI voyage-3"]
+        VOYAGE["Voyage AI voyage-3\n1024-dim embeddings"]
         GOOGLE["Google OAuth"]
         APPLE["Apple OAuth"]
     end
 
-    subgraph Storage["Local Storage"]
-        LANCEDB[("LanceDB\ndata/lancedb/\nreceipts · receipt_items\n(user_id scoped)")]
-        IMGS["public/uploads/\nReceipt images"]
+    subgraph CloudStorage["Cloud Storage"]
+        NEON[("Neon Postgres\n+ pgvector\nreceipts · receipt_items\n(user_id scoped)")]
+        R2[("Cloudflare R2\nPrivate bucket\nReceipt images")]
     end
 
     UI_SIGNIN -->|OAuth| RT_AUTH
     RT_AUTH <--> GOOGLE
     RT_AUTH <--> APPLE
 
-    UI_DASH -->|upload| RT_UP
-    UI_DASH -->|question| RT_QR
+    FAB -->|upload| RT_UP
+    FAB -->|question| UI_QUERY
+    UI_DASH --> RT_RX
+    UI_DASH --> RT_QR
     UI_RX --> RT_RX
     UI_ITEMS --> RT_ITEMS
+    UI_QUERY --> RT_QR
 
     RT_UP --> SESSION
-    RT_UP --> IMGS
     RT_UP --> EXTRACT
     RT_UP --> EMBED
+    RT_UP --> R2_LIB
     RT_UP --> DB
 
     RT_RX --> SESSION
     RT_RX --> DB
+    RT_RX -->|image_path key| R2_LIB
+
     RT_QR --> SESSION
     RT_QR --> EMBED
     RT_QR --> DB
@@ -65,41 +72,50 @@ flowchart TD
 
     EXTRACT -->|base64 image| CLAUDE
     EMBED -->|text → vectors| VOYAGE
-    DB <-->|read / write| LANCEDB
+    DB <-->|SQL + pgvector| NEON
+    R2_LIB <-->|S3-compatible API| R2
 ```
 
 ### Upload flow
-`image` → save to disk → **Claude Vision** extracts structured JSON → validates it's a receipt → deduplication check → **Voyage AI** embeds each item → **LanceDB** stores receipt + items scoped to `user_id`
+`image` → base64 in memory → **Claude Vision** extracts structured JSON → validates it's a receipt → deduplication check → **Voyage AI** embeds each item (1024-dim) → upload image to **Cloudflare R2** → save receipt + items (with vectors) to **Neon**
 
 ### Query (RAG) flow
-`question` → **Voyage AI** embeds query → **LanceDB** vector search (filtered by `user_id`) → fetch parent receipts → **Claude** answers with full context
+`question` → **Voyage AI** embeds query → **pgvector** cosine similarity search in Neon (filtered by `user_id`, top 100 items) → fetch parent receipts → **Claude** reads full context and answers
+
+### Image access flow
+`GET /api/receipts/[id]` → verify session owns receipt → generate **R2 presigned URL** (1hr expiry, HMAC-signed) → returned alongside receipt data → browser renders image directly
 
 ---
 
 ## Features
 
 - **Authentication** — Google and Apple OAuth via NextAuth; invite-only mode via email allowlist
-- **Scan receipts** — upload or snap a receipt; Claude extracts store, items, tax, payment, rewards, POS details
+- **Scan receipts** — upload or snap a receipt via the floating action bar; Claude extracts store, items, tax, payment, rewards, POS details
 - **Non-receipt rejection** — non-receipt images are rejected before any data is stored
 - **Duplicate detection** — same store + date + total is rejected with a redirect to the existing receipt
-- **Dashboard** — monthly spend, category breakdown, recent receipts, AI query
+- **Dashboard** — monthly spend, category breakdown by item, recent receipts
+- **Ask AI from anywhere** — floating action bar on every page; ask anything in natural language about your spending
 - **Receipts** — browse and delete all scanned receipts
 - **Items** — search and filter individual line items across all receipts
-- **User-scoped data** — all receipts and items are isolated per user account
+- **Private image storage** — receipt images in Cloudflare R2 private bucket; served via auth-gated presigned URLs (1hr expiry)
+- **User-scoped data** — all receipts, items, and images isolated per user account
 
 ## Tech Stack
 
 - [Next.js 16](https://nextjs.org) — frontend and API routes (App Router)
 - [NextAuth.js v5](https://authjs.dev) — Google and Apple OAuth
 - [Claude](https://anthropic.com) (`claude-opus-4-7`) — receipt extraction and natural language queries
-- [LanceDB](https://lancedb.com) — embedded vector database (local, `data/lancedb/`)
-- [Voyage AI](https://voyageai.com) (`voyage-3`) — semantic embeddings for vector search
+- [Neon](https://neon.tech) — serverless Postgres with pgvector extension for relational data and vector search
+- [Voyage AI](https://voyageai.com) (`voyage-3`) — 1024-dim semantic embeddings for RAG vector search
+- [Cloudflare R2](https://developers.cloudflare.com/r2/) — S3-compatible private object storage for receipt images
 
 ## Prerequisites
 
 - Node.js 18+
 - [Anthropic API key](https://console.anthropic.com)
 - [Voyage AI API key](https://dash.voyageai.com)
+- [Neon](https://neon.tech) account — create a project, copy the connection string (free tier sufficient)
+- [Cloudflare](https://dash.cloudflare.com) account with R2 enabled — create a private bucket and API token (free tier: 10 GB)
 - Google OAuth credentials — [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Credentials → OAuth 2.0 Client
 
 ## Setup
@@ -112,14 +128,22 @@ flowchart TD
    npm install
    ```
 
-   > LanceDB ships native binaries. On some platforms you may need to install the platform package explicitly:
-   > ```bash
-   > npm install @lancedb/lancedb-darwin-arm64  # macOS Apple Silicon
-   > npm install @lancedb/lancedb-darwin-x64    # macOS Intel
-   > npm install @lancedb/lancedb-linux-x64-gnu # Linux x64
-   > ```
+2. **Provision Neon**
 
-2. **Configure environment**
+   - Go to [neon.tech](https://neon.tech) → create a project
+   - Copy the connection string from the dashboard (`postgresql://user:pass@ep-xxx.neon.tech/neondb?sslmode=require`)
+   - Schema is created automatically on first request — no manual migration needed
+
+3. **Provision Cloudflare R2**
+
+   - Go to [dash.cloudflare.com](https://dash.cloudflare.com) → R2 → Create bucket (keep access **Private**)
+   - R2 → Manage R2 API Tokens → Create API Token
+     - Permission: **Object Read & Write**
+     - Scope: your specific bucket only
+   - Note your **Account ID** (top-right of the Cloudflare dashboard)
+   - Copy the **Access Key ID** and **Secret Access Key** (secret shown once)
+
+4. **Configure environment**
 
    ```bash
    cp .env.local.example .env.local
@@ -142,9 +166,18 @@ flowchart TD
 
    # Invite-only allowlist (remove this var entirely to open access)
    ALLOWED_EMAILS=you@example.com,friend@example.com
+
+   # Neon
+   DATABASE_URL=postgresql://user:pass@ep-xxx.us-east-1.aws.neon.tech/neondb?sslmode=require
+
+   # Cloudflare R2
+   CLOUDFLARE_ACCOUNT_ID=your-account-id
+   R2_ACCESS_KEY_ID=your-access-key-id
+   R2_SECRET_ACCESS_KEY=your-secret-access-key
+   R2_BUCKET_NAME=your-bucket-name
    ```
 
-3. **Start the dev server**
+5. **Start the dev server**
 
    ```bash
    npm run dev
@@ -154,22 +187,22 @@ flowchart TD
 
 ## Data Storage
 
-All data is stored locally — nothing sent to external servers except Anthropic and Voyage AI API calls.
+All data lives in cloud services — runs identically locally and on Vercel.
 
-| Location | Contents |
-|---|---|
-| `data/lancedb/` | Receipt records and vector embeddings (user-scoped) |
-| `public/uploads/` | Uploaded receipt images |
+| Service | Contents | Notes |
+|---|---|---|
+| Neon (Postgres + pgvector) | Receipts, line items, 1024-dim vectors | Portable via `pg_dump`; standard SQL |
+| Cloudflare R2 | Receipt images | S3-compatible; portable to AWS S3, MinIO, etc. |
 
-Both directories are excluded from git.
+For staging environments: create a Neon branch (copy-on-write fork) and a separate R2 bucket, then point preview deployments at those credentials.
 
 ## Usage
 
 1. Sign in with Google (or Apple once configured)
-2. Upload a receipt from the dashboard — drag-and-drop, file picker, or the camera FAB
+2. Upload a receipt using the floating action bar at the bottom of every page — drag-and-drop, file picker, or the Upload button
 3. Claude extracts all details in a few seconds; non-receipts are rejected automatically
 4. Browse receipts under **Receipts**, individual items under **Items**
-5. Ask anything in the dashboard query box — "How much did I spend on dairy this month?"
+5. Ask anything using the **Ask AI** button in the floating bar — available on every page
 
 ### Example questions
 
