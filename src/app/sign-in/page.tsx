@@ -3,97 +3,170 @@ import { signIn } from '@/auth';
 export default function SignInPage() {
   return (
     <div style={{
-      minHeight: '100vh', display: 'flex',
-      background: 'var(--bg-primary)',
+      minHeight: '100dvh',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'linear-gradient(160deg, #1A3ACC 0%, #2952E3 60%, #3D6BF5 100%)',
+      position: 'relative',
+      overflow: 'hidden',
     }}>
-      {/* Left panel — brand */}
-      <div style={{
-        display: 'none',
-        flex: '1',
-        background: 'var(--accent)',
-        padding: '48px',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-      }} className="sign-in-left">
+      {/* Hero panel */}
+      <div style={{ flex: 1, padding: '48px 24px 32px', display: 'flex', flexDirection: 'column', gap: 32 }}>
+
+        {/* Logo row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{
-            width: 32, height: 32, borderRadius: 10, background: 'rgba(255,255,255,0.15)',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'white',
+            width: 32, height: 32, borderRadius: 8,
+            background: 'rgba(255,255,255,0.15)',
+            backdropFilter: 'blur(8px)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M16 4h2a2 2 0 0 1 2 2v14l-3-2-2 2-2-2-2 2-2-2-3 2V6a2 2 0 0 1 2-2h2"/>
               <path d="M9 12h6"/><path d="M9 8h6"/>
             </svg>
           </span>
-          <span style={{ color: 'white', fontWeight: 500, fontSize: 16, letterSpacing: '-0.01em' }}>Ledger.AI</span>
+          <span style={{ color: 'white', fontWeight: 700, fontSize: 17, letterSpacing: '-0.01em' }}>Ledger.AI</span>
         </div>
 
+        {/* App preview card */}
+        <div style={{
+          background: 'rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(12px)',
+          borderRadius: 16,
+          border: '1px solid rgba(255,255,255,0.15)',
+          padding: '16px 18px',
+        }}>
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>May 2026</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <p className="mono" style={{ color: 'white', fontSize: 28, fontWeight: 500, letterSpacing: '-1px', margin: 0 }}>$96.47</p>
+            <span style={{
+              background: 'rgba(255,100,100,0.25)',
+              color: '#FFB3B3',
+              fontSize: 11, fontWeight: 600,
+              borderRadius: 100,
+              padding: '3px 8px',
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+            }}>
+              ↑ 47% vs April
+            </span>
+          </div>
+
+          {/* Mini sparkline */}
+          <svg width="100%" height="36" viewBox="0 0 200 36" preserveAspectRatio="none" style={{ display: 'block', marginBottom: 10 }}>
+            {[22, 14, 32, 18, 28, 12, 36].map((h, i) => {
+              const slot = 200 / 7;
+              return (
+                <rect
+                  key={i}
+                  x={i * slot + slot * 0.12}
+                  y={36 - h}
+                  width={slot * 0.76}
+                  height={h}
+                  rx={3}
+                  fill={i === 6 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)'}
+                />
+              );
+            })}
+          </svg>
+
+          {/* Category bars */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[
+              { label: 'Dining',   dot: '#FFD23F' },
+              { label: 'Produce',  dot: '#34D399' },
+              { label: 'Services', dot: '#A78BFA' },
+            ].map(({ label, dot }) => (
+              <div key={label} style={{
+                flex: 1,
+                background: 'rgba(255,255,255,0.15)',
+                borderRadius: 8,
+                padding: '7px 8px',
+              }}>
+                <div style={{ width: 8, height: 8, borderRadius: 2, background: dot, marginBottom: 5 }} />
+                <span style={{ color: 'white', fontSize: 10, fontWeight: 500 }}>{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Tagline + features */}
         <div>
-          <p style={{ color: 'white', fontSize: 28, fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.3, margin: '0 0 20px' }}>
-            Know exactly where<br />your money goes.
+          <p style={{ color: 'white', fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 20px', lineHeight: 1.3 }}>
+            Know exactly where your money goes.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {[
-              { icon: '📷', text: 'Snap receipts, AI extracts everything' },
-              { icon: '📊', text: 'Spending breakdown by category' },
-              { icon: '✨', text: 'Ask anything about your purchases' },
-            ].map(({ icon, text }) => (
-              <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 18 }}>{icon}</span>
-                <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.4 }}>{text}</span>
+              { title: 'Snap receipts instantly', sub: 'AI extracts every item automatically' },
+              { title: 'Spending by category', sub: 'See exactly where your money goes' },
+              { title: 'Ask anything', sub: 'Chat with AI about your purchases' },
+            ].map(({ title, sub }) => (
+              <div key={title} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{
+                  width: 16, height: 16, borderRadius: 4, border: '1.5px solid rgba(255,255,255,0.7)',
+                  flexShrink: 0, marginTop: 1,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <svg width="9" height="9" viewBox="0 0 10 8" fill="none">
+                    <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+                <div>
+                  <p style={{ color: 'white', fontSize: 12, fontWeight: 600, margin: 0 }}>{title}</p>
+                  <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, margin: 0 }}>{sub}</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Right panel — auth */}
+      {/* Bottom form panel */}
       <div style={{
-        flex: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px',
+        background: 'white',
+        borderRadius: '22px 22px 0 0',
+        padding: '16px 24px 36px',
       }}>
-        <div style={{ width: '100%', maxWidth: 340 }}>
-          {/* Logo mark — visible on mobile only */}
-          <div style={{ marginBottom: 32, display: 'flex', flexDirection: 'column', alignItems: 'center' }} className="sign-in-mobile-logo">
-            <span style={{
-              width: 48, height: 48, borderRadius: 14, background: 'var(--text-primary)',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', marginBottom: 14,
-            }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 4h2a2 2 0 0 1 2 2v14l-3-2-2 2-2-2-2 2-2-2-3 2V6a2 2 0 0 1 2-2h2"/>
-                <path d="M9 12h6"/><path d="M9 8h6"/>
-              </svg>
-            </span>
-            <p style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.03em', margin: '0 0 4px' }}>Ledger.AI</p>
-          </div>
+        {/* Drag handle */}
+        <div style={{
+          width: 36, height: 4, background: '#E2E4EE', borderRadius: 2,
+          margin: '0 auto 18px',
+        }} />
 
-          <p style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.02em', margin: '0 0 4px' }}>
-            Welcome back
-          </p>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 28px' }}>
-            Sign in to your account
-          </p>
+        <p style={{ fontSize: 20, fontWeight: 700, color: '#0D0F1A', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
+          Welcome back
+        </p>
+        <p style={{ fontSize: 13, color: '#7B8099', margin: '0 0 20px' }}>
+          Sign in to your account
+        </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <form action={async () => {
-              'use server';
-              await signIn('google', { redirectTo: '/' });
-            }}>
-              <SignInButton label="Continue with Google" icon={<GoogleIcon />} />
-            </form>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <form action={async () => {
+            'use server';
+            await signIn('google', { redirectTo: '/' });
+          }}>
+            <SignInButton label="Continue with Google" icon={<GoogleIcon />} />
+          </form>
 
-            <form action={async () => {
-              'use server';
-              await signIn('apple', { redirectTo: '/' });
-            }}>
-              <SignInButton label="Continue with Apple" icon={<AppleIcon />} dark />
-            </form>
-          </div>
-
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 28, lineHeight: 1.6 }}>
-            By signing in you agree to our terms of service<br />and privacy policy.
-          </p>
+          <form action={async () => {
+            'use server';
+            await signIn('apple', { redirectTo: '/' });
+          }}>
+            <SignInButton label="Continue with Apple" icon={<AppleIcon />} dark />
+          </form>
         </div>
+
+        <p style={{ fontSize: 11, color: '#B4B8CC', textAlign: 'center', marginTop: 16, lineHeight: 1.7 }}>
+          By signing in you agree to our{' '}
+          <a href="#" style={{ color: '#2952E3', textDecoration: 'none' }}>terms of service</a>
+          {' '}and{' '}
+          <a href="#" style={{ color: '#2952E3', textDecoration: 'none' }}>privacy policy</a>.
+        </p>
+
+        <p style={{ fontSize: 12, textAlign: 'center', marginTop: 12, color: '#3D4154' }}>
+          New to Ledger.AI?{' '}
+          <a href="#" style={{ color: '#2952E3', fontWeight: 600, textDecoration: 'none' }}>Create account</a>
+        </p>
       </div>
     </div>
   );
@@ -104,12 +177,14 @@ function SignInButton({ label, icon, dark }: { label: string; icon: React.ReactN
     <button
       type="submit"
       style={{
-        width: '100%', height: 46,
+        width: '100%',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        gap: 10, fontSize: 14, fontWeight: 500, borderRadius: 10, cursor: 'pointer',
-        border: dark ? 'none' : '1px solid var(--border-medium)',
-        background: dark ? 'var(--text-primary)' : 'var(--bg-primary)',
-        color: dark ? '#ffffff' : 'var(--text-primary)',
+        gap: 10, fontSize: 14, fontWeight: 600,
+        borderRadius: 12, cursor: 'pointer',
+        padding: '12px 16px',
+        border: dark ? 'none' : '1.5px solid #E2E4EE',
+        background: dark ? '#0D0F1A' : 'white',
+        color: dark ? '#ffffff' : '#0D0F1A',
         letterSpacing: '-0.01em',
         transition: 'opacity 0.15s',
       }}

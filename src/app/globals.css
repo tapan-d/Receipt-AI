@@ -1,62 +1,83 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @layer base {
   :root {
+    /* Brand */
+    --brand:        #2952E3;
+    --brand-light:  #EEF2FF;
+    --brand-dark:   #1A3ACC;
+
+    /* Ink scale */
+    --ink:          #0D0F1A;
+    --ink-2:        #3D4154;
+    --ink-3:        #7B8099;
+    --ink-4:        #B4B8CC;
+
+    /* Surfaces */
+    --surface:      oklch(98.5% 0.004 240);
+    --surface-2:    #F2F3F7;
+    --surface-3:    #E8EAF2;
+    --border:       #E2E4EE;
+
+    /* Semantic */
+    --green:        oklch(55% 0.16 155);
+    --green-bg:     oklch(96% 0.04 155);
+    --red:          oklch(55% 0.18 25);
+    --red-bg:       oklch(96% 0.04 25);
+    --amber:        oklch(65% 0.16 70);
+    --amber-bg:     oklch(96% 0.06 70);
+
+    /* AI accent */
+    --ai-yellow:    #FFD23F;
+
+    /* Category colors */
+    --cat-bakery-fg:   #B45309; --cat-bakery-bg:   #FEF3C7;
+    --cat-other-fg:    #6366F1; --cat-other-bg:    #EEF2FF;
+    --cat-produce-fg:  #059669; --cat-produce-bg:  #D1FAE5;
+    --cat-frozen-fg:   #0EA5E9; --cat-frozen-bg:   #E0F2FE;
+    --cat-snacks-fg:   #EC4899; --cat-snacks-bg:   #FCE7F3;
+    --cat-services-fg: #8B5CF6; --cat-services-bg: #EDE9FE;
+    --cat-dining-fg:   #EF4444; --cat-dining-bg:   #FEE2E2;
+    --cat-shopping-fg: #EF4444; --cat-shopping-bg: #FEE2E2;
+
+    /* Legacy aliases (used by existing components) */
     --bg-primary:    #ffffff;
-    --bg-secondary:  #f4f4f5;
-    --bg-tertiary:   #e4e4e7;
-    --text-primary:  #09090b;
-    --text-secondary:#52525b;
-    --text-tertiary: #71717a;
-    --border-light:  #e4e4e7;
-    --border-medium: #d4d4d8;
-    --success-text:  #16a34a;
-    --danger-text:   #dc2626;
-    --accent:        #2563eb;
-    --accent-subtle: #eff6ff;
-    --accent-fg:     #1d4ed8;
-
-    --cat-dairy:    #534ab7;
-    --cat-produce:  #16a34a;
-    --cat-meat:     #dc2626;
-    --cat-bakery:   #ea580c;
-    --cat-beverage: #2563eb;
-    --cat-snack:    #9333ea;
-    --cat-frozen:   #0891b2;
-    --cat-canned:   #71717a;
-    --cat-oils:     #d97706;
-    --cat-household:#475569;
-    --cat-personal: #db2777;
-    --cat-other:    #a1a1aa;
-
-    --tint-blue-bg:   #eff6ff; --tint-blue-fg:   #1d4ed8;
-    --tint-coral-bg:  #fef2f2; --tint-coral-fg:  #991b1b;
-    --tint-green-bg:  #f0fdf4; --tint-green-fg:  #166534;
-    --tint-purple-bg: #faf5ff; --tint-purple-fg: #7e22ce;
+    --bg-secondary:  var(--surface-2);
+    --bg-tertiary:   var(--surface-3);
+    --text-primary:  var(--ink);
+    --text-secondary:var(--ink-2);
+    --text-tertiary: var(--ink-3);
+    --border-light:  var(--border);
+    --border-medium: var(--border);
+    --success-text:  var(--green);
+    --danger-text:   var(--red);
+    --accent:        var(--brand);
+    --accent-subtle: var(--brand-light);
+    --accent-fg:     var(--brand-dark);
   }
 
   *, *::before, *::after { box-sizing: border-box; }
 
   body {
-    background: #fafafa;
-    color: var(--text-primary);
-    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     line-height: 1.5;
   }
 
+  .mono { font-family: 'DM Mono', monospace; font-weight: 500; }
+
   @keyframes spin { to { transform: rotate(360deg); } }
   .spin { animation: spin 1s linear infinite; }
 
-  .receipt-row:hover {
-    background: var(--bg-secondary) !important;
-    border-color: var(--border-medium) !important;
+  @keyframes bounce-dot {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+    40% { transform: translateY(-6px); opacity: 1; }
   }
+  .dot-bounce { animation: bounce-dot 1.2s ease-in-out infinite; }
 
-  @media (min-width: 640px) {
-    .sign-in-left { display: flex !important; }
-    .sign-in-mobile-logo { display: none !important; }
-  }
+  .receipt-row:hover { background: var(--surface-2) !important; }
 }

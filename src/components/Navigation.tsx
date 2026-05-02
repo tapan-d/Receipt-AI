@@ -6,10 +6,10 @@ import { useSession } from 'next-auth/react';
 import NavUploadButton from './NavUploadButton';
 
 const NAV = [
-  { href: '/',          label: 'Dashboard' },
-  { href: '/receipts',  label: 'Receipts' },
-  { href: '/items',     label: 'Items' },
-  { href: null,         label: 'Trends' },
+  { href: '/',         label: 'Dashboard' },
+  { href: '/receipts', label: 'Receipts' },
+  { href: '/items',    label: 'Items' },
+  { href: '/trends',   label: 'Trends' },
 ];
 
 export default function Navigation() {
@@ -53,21 +53,13 @@ export default function Navigation() {
           {/* Nav links */}
           <nav style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {NAV.map(({ href, label }) => {
-              const active = href !== null && pathname === href;
-              const disabled = href === null;
-              return disabled ? (
-                <span key={label} style={{
+              const active = pathname === href;
+              return (
+                <Link key={label} href={href} style={{
                   fontSize: 13, padding: '6px 12px', borderRadius: 8,
-                  color: 'var(--text-tertiary)', cursor: 'default',
-                }}>
-                  {label}
-                </span>
-              ) : (
-                <Link key={label} href={href!} style={{
-                  fontSize: 13, padding: '6px 12px', borderRadius: 8,
-                  color: active ? 'var(--accent-fg)' : 'var(--text-secondary)',
-                  background: active ? 'var(--accent-subtle)' : 'transparent',
-                  fontWeight: active ? 500 : 400,
+                  color: active ? 'var(--brand)' : 'var(--ink-3)',
+                  background: active ? 'var(--brand-light)' : 'transparent',
+                  fontWeight: active ? 600 : 400,
                   textDecoration: 'none',
                   transition: 'background 0.15s, color 0.15s',
                 }}>

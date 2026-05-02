@@ -4,23 +4,32 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { ReceiptItem } from '@/lib/types';
 
-const CATEGORY_COLORS: Record<string, { bg: string; fg: string }> = {
-  Dairy:               { bg: 'rgba(83,74,183,0.12)',   fg: '#534ab7' },
-  Produce:             { bg: 'rgba(29,158,117,0.12)',  fg: '#1d9e75' },
-  'Meat & Seafood':    { bg: 'rgba(216,90,48,0.12)',   fg: '#d85a30' },
-  Bakery:              { bg: 'rgba(224,120,56,0.12)',   fg: '#e07838' },
-  Beverages:           { bg: 'rgba(59,130,246,0.12)',   fg: '#3b82f6' },
-  Snacks:              { bg: 'rgba(147,51,234,0.12)',   fg: '#9333ea' },
-  'Frozen Foods':      { bg: 'rgba(6,182,212,0.12)',    fg: '#06b6d4' },
-  'Canned & Packaged': { bg: 'rgba(136,135,128,0.12)', fg: '#888780' },
-  'Oils & Condiments': { bg: 'rgba(217,119,6,0.12)',   fg: '#d97706' },
-  Household:           { bg: 'rgba(100,116,139,0.12)', fg: '#64748b' },
-  'Personal Care':     { bg: 'rgba(212,83,126,0.12)',  fg: '#d4537e' },
-  Other:               { bg: 'rgba(180,178,169,0.12)', fg: '#888780' },
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const CAT_COLORS: Record<string, { fg: string; bg: string }> = {
+  Produce:             { fg: '#059669', bg: '#D1FAE5' },
+  Bakery:              { fg: '#B45309', bg: '#FEF3C7' },
+  'Frozen Foods':      { fg: '#0EA5E9', bg: '#E0F2FE' },
+  Snacks:              { fg: '#EC4899', bg: '#FCE7F3' },
+  Services:            { fg: '#8B5CF6', bg: '#EDE9FE' },
+  Dining:              { fg: '#EF4444', bg: '#FEE2E2' },
+  Shopping:            { fg: '#EF4444', bg: '#FEE2E2' },
+  Dairy:               { fg: '#0EA5E9', bg: '#E0F2FE' },
+  'Meat & Seafood':    { fg: '#EF4444', bg: '#FEE2E2' },
+  Beverages:           { fg: '#2952E3', bg: '#EEF2FF' },
+  'Canned & Packaged': { fg: '#7B8099', bg: '#F2F3F7' },
+  'Oils & Condiments': { fg: '#B45309', bg: '#FEF3C7' },
+  Household:           { fg: '#8B5CF6', bg: '#EDE9FE' },
+  'Personal Care':     { fg: '#EC4899', bg: '#FCE7F3' },
+  Other:               { fg: '#6366F1', bg: '#EEF2FF' },
 };
 
 function catInitial(category: string) {
   return category.trim()[0]?.toUpperCase() ?? '?';
+}
+
+function toTitleCase(str: string) {
+  return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 }
 
 function relativeDate(dateStr: string): string {
@@ -29,11 +38,10 @@ function relativeDate(dateStr: string): string {
   if (dateStr === today) return 'Today';
   if (dateStr === yesterday) return 'Yesterday';
   const [y, m, d] = dateStr.split('-');
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const isThisYear = parseInt(y) === new Date().getFullYear();
   return isThisYear
-    ? `${months[parseInt(m) - 1]} ${parseInt(d)}`
-    : `${months[parseInt(m) - 1]} ${parseInt(d)}, ${y}`;
+    ? `${MONTHS_SHORT[parseInt(m) - 1]} ${parseInt(d)}`
+    : `${MONTHS_SHORT[parseInt(m) - 1]} ${parseInt(d)}, ${y}`;
 }
 
 export default function ItemsPage() {
@@ -48,10 +56,7 @@ export default function ItemsPage() {
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) {
-          const sorted = [...data].sort((a, b) =>
-            a.purchase_date < b.purchase_date ? 1 : -1
-          );
-          setItems(sorted);
+          setItems([...data].sort((a, b) => a.purchase_date < b.purchase_date ? 1 : -1));
         } else {
           setError(data.error || 'Failed to load items');
         }
@@ -69,31 +74,29 @@ export default function ItemsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter(item => {
-      const matchesSearch = !q || item.item_name.toLowerCase().includes(q) || item.store_name.toLowerCase().includes(q);
-      const matchesCategory = activeCategory === 'All' || item.category === activeCategory;
-      return matchesSearch && matchesCategory;
+      const matchSearch = !q || item.item_name.toLowerCase().includes(q) || item.store_name.toLowerCase().includes(q);
+      const matchCat = activeCategory === 'All' || item.category === activeCategory;
+      return matchSearch && matchCat;
     });
   }, [items, search, activeCategory]);
 
-  if (loading) {
-    return <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Loading…</p>;
-  }
+  const filteredTotal = useMemo(() => filtered.reduce((s, i) => s + i.total_price, 0), [filtered]);
 
-  if (error) {
-    return <p style={{ fontSize: 14, color: 'var(--danger-text)' }}>{error}</p>;
-  }
+  if (loading) return <p style={{ fontSize: 14, color: '#7B8099' }}>Loading…</p>;
+  if (error)   return <p style={{ fontSize: 14, color: 'var(--red)' }}>{error}</p>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      <section>
-        <h1 style={{ fontSize: 28, fontWeight: 500, margin: '0 0 4px', letterSpacing: '-0.025em' }}>Items</h1>
-        <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>
+      {/* Header */}
+      <div>
+        <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 2px', letterSpacing: '-0.02em', color: '#0D0F1A' }}>Items</h1>
+        <p style={{ fontSize: 12, color: '#7B8099', margin: 0 }}>
           {items.length > 0
-            ? `${filtered.length.toLocaleString()} of ${items.length.toLocaleString()} item${items.length !== 1 ? 's' : ''}`
+            ? `${filtered.length.toLocaleString()} of ${items.length.toLocaleString()} items · $${filteredTotal.toFixed(2)}`
             : 'No items yet'}
         </p>
-      </section>
+      </div>
 
       {items.length > 0 && (
         <>
@@ -101,7 +104,7 @@ export default function ItemsPage() {
           <div style={{ position: 'relative' }}>
             <span style={{
               position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-              pointerEvents: 'none', color: 'var(--text-tertiary)', display: 'flex',
+              pointerEvents: 'none', color: '#7B8099', display: 'flex',
             }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
@@ -113,41 +116,35 @@ export default function ItemsPage() {
               onChange={e => setSearch(e.target.value)}
               placeholder="Search items or stores…"
               style={{
-                width: '100%', padding: '10px 12px 10px 36px',
+                width: '100%', padding: '9px 12px 9px 36px',
                 fontSize: 14, fontFamily: 'inherit',
-                color: 'var(--text-primary)', background: 'var(--bg-secondary)',
-                border: '0.5px solid var(--border-medium)', borderRadius: 8,
-                outline: 'none', transition: 'border-color 0.15s, box-shadow 0.15s',
+                color: '#0D0F1A', background: '#F2F3F7',
+                border: '1.5px solid transparent', borderRadius: 10,
+                outline: 'none', transition: 'border-color 0.15s',
               }}
-              onFocus={e => { e.currentTarget.style.borderColor = 'var(--text-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,0,0,0.05)'; }}
-              onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-medium)'; e.currentTarget.style.boxShadow = 'none'; }}
+              onFocus={e => e.currentTarget.style.borderColor = '#2952E3'}
+              onBlur={e => e.currentTarget.style.borderColor = 'transparent'}
             />
           </div>
 
           {/* Category chips */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
             {categories.map(cat => {
               const active = cat === activeCategory;
-              const colors = cat !== 'All' ? CATEGORY_COLORS[cat] ?? CATEGORY_COLORS.Other : null;
+              const colors = cat !== 'All' ? (CAT_COLORS[cat] ?? CAT_COLORS.Other) : null;
               return (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => setActiveCategory(cat)}
                   style={{
-                    fontSize: 12, padding: '5px 11px',
-                    borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
-                    transition: 'background 0.15s, color 0.15s, border-color 0.15s',
-                    border: active
-                      ? `0.5px solid ${colors ? colors.fg : 'var(--text-primary)'}`
-                      : '0.5px solid var(--border-medium)',
-                    background: active
-                      ? (colors ? colors.bg : 'var(--bg-tertiary)')
-                      : 'var(--bg-secondary)',
-                    color: active
-                      ? (colors ? colors.fg : 'var(--text-primary)')
-                      : 'var(--text-secondary)',
-                    fontWeight: active ? 500 : 400,
+                    fontSize: 12, fontWeight: active ? 600 : 400,
+                    padding: '5px 12px', borderRadius: 100,
+                    border: active ? 'none' : '1.5px solid #E2E4EE',
+                    background: active ? (colors ? colors.bg : '#0D0F1A') : 'white',
+                    color: active ? (colors ? colors.fg : 'white') : '#7B8099',
+                    cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                    transition: 'background 0.15s',
                   }}
                 >
                   {cat}
@@ -160,46 +157,44 @@ export default function ItemsPage() {
 
       {/* List */}
       {filtered.length === 0 ? (
-        <p style={{ fontSize: 14, color: 'var(--text-tertiary)', textAlign: 'center', paddingTop: 32 }}>
-          {items.length === 0
-            ? 'Upload receipts to see your items here.'
-            : 'No items match your search.'}
+        <p style={{ fontSize: 14, color: '#7B8099', textAlign: 'center', paddingTop: 32 }}>
+          {items.length === 0 ? 'Upload receipts to see your items here.' : 'No items match your search.'}
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {filtered.map(item => {
-            const colors = CATEGORY_COLORS[item.category] ?? CATEGORY_COLORS.Other;
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {filtered.map((item, i) => {
+            const colors = CAT_COLORS[item.category] ?? CAT_COLORS.Other;
             return (
-              <Link key={item.id} href={`/receipts/${item.receipt_id}`} style={{
-                display: 'grid', gridTemplateColumns: '36px 1fr auto auto',
-                gap: 14, alignItems: 'center', padding: '12px 14px',
-                background: 'var(--bg-primary)',
-                border: '0.5px solid var(--border-light)', borderRadius: 8,
+              <Link key={item.id} href={`/receipts/${item.receipt_id}`} className="receipt-row" style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '11px 12px',
+                background: 'white',
+                borderRadius: i === 0 && i === filtered.length - 1 ? 12
+                  : i === 0 ? '12px 12px 0 0'
+                  : i === filtered.length - 1 ? '0 0 12px 12px' : 0,
+                borderBottom: i < filtered.length - 1 ? '1px solid #E2E4EE' : 'none',
                 textDecoration: 'none', color: 'inherit',
-                transition: 'background 0.15s, border-color 0.15s',
+                transition: 'background 0.15s',
               }}>
                 <span style={{
-                  width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                  width: 38, height: 38, borderRadius: 10, flexShrink: 0,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 600,
+                  fontSize: 13, fontWeight: 600,
                   background: colors.bg, color: colors.fg,
                 }}>
                   {catInitial(item.category)}
                 </span>
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {item.item_name}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#0D0F1A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {toTitleCase(item.item_name)}
                   </p>
-                  <p style={{ margin: '1px 0 0', fontSize: 11, color: 'var(--text-secondary)' }}>
-                    {item.store_name}
+                  <p style={{ margin: '1px 0 0', fontSize: 12, color: '#7B8099' }}>
+                    {item.store_name} · {relativeDate(item.purchase_date)}
                   </p>
                 </div>
-                <span style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                  {relativeDate(item.purchase_date)}
-                </span>
-                <span style={{ fontSize: 13, fontWeight: 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                <p className="mono" style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#0D0F1A', flexShrink: 0 }}>
                   ${item.total_price.toFixed(2)}
-                </span>
+                </p>
               </Link>
             );
           })}
