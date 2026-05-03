@@ -362,8 +362,10 @@ export default function ReceiptDetailPage() {
             )}
             {receipt.discount > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderTop: '1px solid #E8EAF2' }}>
-                <span style={{ fontSize: 13, color: '#7B8099' }}>Discount</span>
-                <span className="mono" style={{ fontSize: 13, color: 'var(--green)' }}>-${receipt.discount.toFixed(2)}</span>
+                <span style={{ fontSize: 13, color: '#7B8099' }}>
+                  Discount{receipt.discount_code ? ` · ${receipt.discount_code}` : ''}
+                </span>
+                <span className="mono" style={{ fontSize: 13, color: 'var(--green)' }}>−${receipt.discount.toFixed(2)}</span>
               </div>
             )}
             {receipt.tax_amount > 0 && (
@@ -472,28 +474,46 @@ export default function ReceiptDetailPage() {
         )}
 
         {/* ── Rewards & Savings ──────────────────────────────────────────── */}
-        {(receipt.reward_points_current > 0 || receipt.reward_program_name || receipt.discount > 0) && (
+        {(receipt.reward_points_current > 0 || receipt.reward_points_required > 0 || receipt.discount_code || receipt.discount > 0) && (
           <SectionCard label="Rewards & Savings">
-            {receipt.reward_program_name && (
-              <InfoRow first icon={<IconTile>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7B8099" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                </svg>
-              </IconTile>}>
-                <span style={{ fontSize: 11, color: '#7B8099' }}>Program</span>
-                <span style={{ fontSize: 14, color: '#0D0F1A' }}>{receipt.reward_program_name}</span>
-              </InfoRow>
-            )}
             {receipt.reward_points_current > 0 && (
-              <InfoRow icon={<IconTile>
+              <InfoRow first icon={<IconTile>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="#F59E0B">
                   <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/>
                 </svg>
               </IconTile>}>
-                <span style={{ fontSize: 11, color: '#7B8099' }}>Points balance</span>
-                <span style={{ fontSize: 14, fontWeight: 500, color: '#B45309' }}>
-                  {receipt.reward_points_current.toLocaleString()} pts
+                <span style={{ fontSize: 11, color: '#7B8099' }}>Points earned</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#B45309' }}>
+                  +{receipt.reward_points_current.toLocaleString()} pts
                 </span>
+              </InfoRow>
+            )}
+            {receipt.reward_points_required > 0 && (
+              <InfoRow first={!receipt.reward_points_current} icon={<IconTile>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7B8099" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </IconTile>}>
+                <span style={{ fontSize: 11, color: '#7B8099' }}>Rewards balance</span>
+                <span className="mono" style={{ fontSize: 14, color: '#7B8099' }}>
+                  {receipt.reward_points_required.toLocaleString()} pts
+                </span>
+              </InfoRow>
+            )}
+            {receipt.discount_code && (
+              <InfoRow icon={<IconTile>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7B8099" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                  <line x1="7" y1="7" x2="7.01" y2="7"/>
+                </svg>
+              </IconTile>}>
+                <span style={{ fontSize: 11, color: '#7B8099' }}>Discount code</span>
+                <span className="mono" style={{
+                  fontSize: 12, color: '#0D0F1A',
+                  background: '#F2F3F7', borderRadius: 6,
+                  padding: '2px 8px', display: 'inline-block',
+                  marginTop: 2, letterSpacing: '0.05em',
+                }}>{receipt.discount_code}</span>
               </InfoRow>
             )}
             {receipt.discount > 0 && (
@@ -502,7 +522,7 @@ export default function ReceiptDetailPage() {
                   <polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
                 </svg>
               </IconTile>}>
-                <span style={{ fontSize: 11, color: '#7B8099' }}>You saved</span>
+                <span style={{ fontSize: 11, color: '#7B8099' }}>Amount saved</span>
                 <span className="mono" style={{ fontSize: 14, fontWeight: 600, color: '#059669' }}>
                   −${receipt.discount.toFixed(2)}
                 </span>

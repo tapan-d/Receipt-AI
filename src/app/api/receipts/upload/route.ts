@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
       reward_program_name: extracted.reward_program_name,
       reward_points_current: extracted.reward_points_current,
       reward_points_required: extracted.reward_points_required,
+      discount_code: extracted.discount_code ?? null,
       pos_system: extracted.pos_system,
       image_path: imageKey,
       item_count: extracted.items.length,

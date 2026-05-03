@@ -42,6 +42,8 @@ export interface Receipt {
   reward_program_name: string;
   reward_points_current: number;
   reward_points_required: number;
+  // Discount
+  discount_code: string | null;
   // POS / meta
   pos_system: string;
   image_path: string;
@@ -74,6 +76,7 @@ export interface ExtractedReceipt {
   reward_program_name: string;
   reward_points_current: number;
   reward_points_required: number;
+  discount_code: string | null;
   pos_system: string;
   items: {
     name: string;

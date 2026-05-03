@@ -25,10 +25,12 @@ async function ensureSchema(): Promise<void> {
       card_last4 TEXT, card_aid TEXT,
       reward_card_number TEXT, reward_program_name TEXT,
       reward_points_current FLOAT8, reward_points_required FLOAT8,
+      discount_code TEXT,
       pos_system TEXT, image_path TEXT,
       item_count INT, created_at TEXT
     )
   `;
+  await sql`ALTER TABLE receipts ADD COLUMN IF NOT EXISTS discount_code TEXT`;
   await sql`
     CREATE TABLE IF NOT EXISTS receipt_items (
       id TEXT PRIMARY KEY,
@@ -58,7 +60,7 @@ export async function saveReceipt(receipt: Receipt, items: ReceiptItem[]): Promi
       employee_name, order_number, subtotal, discount, tax_rate,
       tax_amount, total, payment_method, payment_amount,
       card_last4, card_aid, reward_card_number, reward_program_name,
-      reward_points_current, reward_points_required,
+      reward_points_current, reward_points_required, discount_code,
       pos_system, image_path, item_count, created_at
     ) VALUES (
       ${receipt.id}, ${receipt.user_id}, ${receipt.store_name}, ${receipt.store_address},
@@ -68,7 +70,8 @@ export async function saveReceipt(receipt: Receipt, items: ReceiptItem[]): Promi
       ${receipt.tax_amount}, ${receipt.total}, ${receipt.payment_method}, ${receipt.payment_amount},
       ${receipt.card_last4}, ${receipt.card_aid}, ${receipt.reward_card_number},
       ${receipt.reward_program_name}, ${receipt.reward_points_current},
-      ${receipt.reward_points_required}, ${receipt.pos_system}, ${receipt.image_path},
+      ${receipt.reward_points_required}, ${receipt.discount_code},
+      ${receipt.pos_system}, ${receipt.image_path},
       ${receipt.item_count}, ${receipt.created_at}
     )
   `;
