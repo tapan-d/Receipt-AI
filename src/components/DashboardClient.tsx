@@ -136,8 +136,10 @@ function getCatData(
   const sorted = Object.entries(catTotals)
     .map(([category, total]) => ({ category, total }))
     .sort((a, b) => b.total - a.total);
-  const top3 = sorted.slice(0, 3);
-  const otherTotal = sorted.slice(3).reduce((s, c) => s + c.total, 0);
+  const otherEntry = sorted.find(c => c.category === 'Other');
+  const named = sorted.filter(c => c.category !== 'Other');
+  const top3 = named.slice(0, 3);
+  const otherTotal = named.slice(3).reduce((s, c) => s + c.total, 0) + (otherEntry?.total ?? 0);
   if (otherTotal > 0) top3.push({ category: 'Other', total: otherTotal });
   return top3;
 }
