@@ -4,10 +4,10 @@ import { useState, useRef } from 'react';
 import Link from 'next/link';
 import type { Receipt, ReceiptItem } from '@/lib/types';
 
-type Period = '1W' | '1M' | '3M' | 'YTD';
+type Period = '1W' | '1M' | '3M' | 'YTD' | '1Y';
 
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const MONTHS_FULL  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS_SHORT   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 const CAT_COLORS: Record<string, { fg: string; bg: string }> = {
   Produce:             { fg: '#059669', bg: '#D1FAE5' },
@@ -43,44 +43,44 @@ function relativeDate(dateStr: string, now: Date): string {
 // ── Period utilities ──────────────────────────────────────────────────────────
 
 function getPeriodBounds(period: Period, now: Date): { start: Date; end: Date; label: string; prevLabel: string } {
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+
   if (period === '1W') {
     const start = new Date(now);
     start.setDate(now.getDate() - 6);
     start.setHours(0, 0, 0, 0);
-    const end = new Date(now);
-    end.setHours(23, 59, 59, 999);
     return { start, end, label: 'Last 7 days', prevLabel: 'prior week' };
   }
 
   if (period === '1M') {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    return {
-      start, end,
-      label: `${MONTHS_FULL[now.getMonth()]} ${now.getFullYear()}`,
-      prevLabel: MONTHS_FULL[prevDate.getMonth()],
-    };
+    const start = new Date(now);
+    start.setDate(now.getDate() - 29);
+    start.setHours(0, 0, 0, 0);
+    return { start, end, label: 'Last 30 days', prevLabel: 'prior 30 days' };
   }
 
   if (period === '3M') {
-    const start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-    const end = new Date(now);
-    end.setHours(23, 59, 59, 999);
-    const s = MONTHS_SHORT[start.getMonth()];
-    const e = MONTHS_SHORT[now.getMonth()];
-    return { start, end, label: `${s}–${e} ${now.getFullYear()}`, prevLabel: 'prior 3 months' };
+    const start = new Date(now);
+    start.setDate(now.getDate() - 90);
+    start.setHours(0, 0, 0, 0);
+    return { start, end, label: 'Last 3 months', prevLabel: 'prior 3 months' };
   }
 
-  // YTD
-  const start = new Date(now.getFullYear(), 0, 1);
-  const end = new Date(now);
-  end.setHours(23, 59, 59, 999);
-  return {
-    start, end,
-    label: `YTD ${now.getFullYear()}`,
-    prevLabel: String(now.getFullYear() - 1),
-  };
+  if (period === 'YTD') {
+    const start = new Date(now.getFullYear(), 0, 1);
+    return {
+      start, end,
+      label: `YTD ${now.getFullYear()}`,
+      prevLabel: String(now.getFullYear() - 1),
+    };
+  }
+
+  // 1Y
+  const start = new Date(now);
+  start.setFullYear(now.getFullYear() - 1);
+  start.setHours(0, 0, 0, 0);
+  return { start, end, label: 'Last 12 months', prevLabel: 'prior year' };
 }
 
 function getFilteredReceipts(receipts: Receipt[], period: Period, now: Date): Receipt[] {
@@ -88,36 +88,6 @@ function getFilteredReceipts(receipts: Receipt[], period: Period, now: Date): Re
   const today = now.toISOString().slice(0, 10);
   const startStr = start.toISOString().slice(0, 10);
   return receipts.filter(r => r.purchase_date >= startStr && r.purchase_date <= today);
-}
-
-function getCumulativePoints(
-  receipts: Receipt[],
-  period: Period,
-  now: Date,
-): { pts: { x: number; y: number }[]; total: number } {
-  const { start, end } = getPeriodBounds(period, now);
-  const filtered = getFilteredReceipts(receipts, period, now);
-  const totalMs = end.getTime() - start.getTime() || 1;
-  const sorted = [...filtered].sort((a, b) => a.purchase_date.localeCompare(b.purchase_date));
-
-  const pts: { x: number; y: number }[] = [{ x: 0, y: 0 }];
-  let cumulative = 0;
-
-  for (const r of sorted) {
-    // Parse date at noon to avoid UTC offset issues
-    const [yr, mo, dy] = r.purchase_date.split('-').map(Number);
-    const d = new Date(yr, mo - 1, dy, 12, 0, 0);
-    const x = Math.min(1, Math.max(0, (d.getTime() - start.getTime()) / totalMs));
-    pts.push({ x, y: cumulative });
-    cumulative += r.total;
-    pts.push({ x, y: cumulative });
-  }
-
-  // Extend flat tail to today's position in period
-  const todayX = Math.min(1, (now.getTime() - start.getTime()) / totalMs);
-  pts.push({ x: todayX, y: cumulative });
-
-  return { pts, total: cumulative };
 }
 
 function getCatData(
@@ -145,48 +115,109 @@ function getCatData(
 }
 
 function getPrevSpend(receipts: Receipt[], period: Period, now: Date): number {
-  const { start } = getPeriodBounds(period, now);
+  const { start, end } = getPeriodBounds(period, now);
+  const windowMs = end.getTime() - start.getTime();
+
   let prevStart: Date, prevEnd: Date;
 
-  if (period === '1W') {
-    prevEnd = new Date(start.getTime() - 1);
-    prevStart = new Date(prevEnd);
-    prevStart.setDate(prevStart.getDate() - 6);
-  } else if (period === '1M') {
-    prevEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-    prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  } else if (period === '3M') {
-    prevEnd = new Date(start.getTime() - 1);
-    prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth() - 2, 1);
-  } else {
-    // YTD vs prior full year
+  if (period === 'YTD') {
     prevStart = new Date(now.getFullYear() - 1, 0, 1);
-    prevEnd = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59);
+    prevEnd   = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59);
+  } else {
+    prevEnd   = new Date(start.getTime() - 1);
+    prevStart = new Date(prevEnd.getTime() - windowMs);
   }
 
   const s = prevStart.toISOString().slice(0, 10);
   const e = prevEnd.toISOString().slice(0, 10);
-  return receipts.filter(r => r.purchase_date >= s && r.purchase_date <= e).reduce((acc, r) => acc + r.total, 0);
+  return receipts
+    .filter(r => r.purchase_date >= s && r.purchase_date <= e)
+    .reduce((acc, r) => acc + r.total, 0);
 }
 
-function getXAxisLabels(period: Period, now: Date): string[] {
-  if (period === '1W') return ['6d ago', '4d ago', '2d ago', 'Today'];
+// ── Bar-chart bucket builder ──────────────────────────────────────────────────
 
-  if (period === '1M') {
-    const m = MONTHS_SHORT[now.getMonth()];
-    const last = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    return [`${m} 1`, `${m} 8`, `${m} 15`, `${m} 22`, `${m} ${last}`];
-  }
+type Bucket = {
+  label: string | null;
+  start: string;
+  end: string;
+  isCurrent: boolean;
+};
 
-  if (period === '3M') {
-    return [-2, -1, 0].map(offset => {
-      const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-      return MONTHS_SHORT[d.getMonth()];
+function getBuckets(period: Period, now: Date): Bucket[] {
+  const todayStr = now.toISOString().slice(0, 10);
+
+  if (period === '1W') {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(now);
+      d.setDate(now.getDate() - (6 - i));
+      const dateStr = d.toISOString().slice(0, 10);
+      return {
+        label: i === 6 ? 'Today' : DAYS_SHORT[d.getDay()],
+        start: dateStr,
+        end: dateStr,
+        isCurrent: i === 6,
+      };
     });
   }
 
-  // YTD
-  return ['Jan', 'Mar', 'May'];
+  if (period === '1M') {
+    return Array.from({ length: 30 }, (_, i) => {
+      const d = new Date(now);
+      d.setDate(now.getDate() - (29 - i));
+      const dateStr = d.toISOString().slice(0, 10);
+      return {
+        label: i % 6 === 0 ? `${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}` : null,
+        start: dateStr,
+        end: dateStr,
+        isCurrent: i === 29,
+      };
+    });
+  }
+
+  if (period === '3M') {
+    // 13 weekly buckets, last one ends today
+    return Array.from({ length: 13 }, (_, i) => {
+      const weeksBack = 12 - i;
+      const wEnd = new Date(now);
+      wEnd.setDate(now.getDate() - weeksBack * 7);
+      const wStart = new Date(wEnd);
+      wStart.setDate(wEnd.getDate() - 6);
+      return {
+        label: i % 4 === 0 ? `${MONTHS_SHORT[wStart.getMonth()]} ${wStart.getDate()}` : null,
+        start: wStart.toISOString().slice(0, 10),
+        end: i === 12 ? todayStr : wEnd.toISOString().slice(0, 10),
+        isCurrent: i === 12,
+      };
+    });
+  }
+
+  if (period === 'YTD') {
+    const cur = now.getMonth();
+    return Array.from({ length: cur + 1 }, (_, m) => {
+      const mStart = new Date(now.getFullYear(), m, 1);
+      const mEnd   = m === cur ? now : new Date(now.getFullYear(), m + 1, 0);
+      return {
+        label: MONTHS_SHORT[m],
+        start: mStart.toISOString().slice(0, 10),
+        end: mEnd.toISOString().slice(0, 10),
+        isCurrent: m === cur,
+      };
+    });
+  }
+
+  // 1Y — 12 monthly buckets
+  return Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
+    const mStart = new Date(d.getFullYear(), d.getMonth(), 1);
+    const mEnd   = i === 11 ? now : new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    return {
+      label: MONTHS_SHORT[d.getMonth()],
+      start: mStart.toISOString().slice(0, 10),
+      end: mEnd.toISOString().slice(0, 10),
+      isCurrent: i === 11,
+    };
+  });
 }
 
 // ── Components ────────────────────────────────────────────────────────────────
@@ -222,70 +253,30 @@ function DonutChart({ categories, total }: { categories: { category: string; tot
   );
 }
 
-function StepChart({
-  pts,
-  total,
-  period,
-  now,
-}: {
-  pts: { x: number; y: number }[];
-  total: number;
-  period: Period;
-  now: Date;
-}) {
+function BarChart({ receipts, period, now }: { receipts: Receipt[]; period: Period; now: Date }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [hoverRel, setHoverRel] = useState<number | null>(null);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
-  const W = 300, H = 80;
+  const buckets = getBuckets(period, now);
+  const amounts = buckets.map(b =>
+    receipts
+      .filter(r => r.purchase_date >= b.start && r.purchase_date <= b.end)
+      .reduce((sum, r) => sum + r.total, 0)
+  );
 
-  const svgPts = pts.map(p => ({
-    sx: p.x * W,
-    sy: total > 0 ? H - (p.y / total) * H : H,
-    y: p.y,
-  }));
+  const maxAmount = Math.max(...amounts, 0.01);
+  const n = buckets.length;
+  const gap = n > 20 ? 1.5 : n > 10 ? 2 : 3;
 
-  const linePath = svgPts.length > 1
-    ? svgPts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.sx.toFixed(1)} ${p.sy.toFixed(1)}`).join(' ')
-    : `M 0 ${H} L ${W} ${H}`;
-
-  const areaPath = svgPts.length > 1
-    ? `${linePath} L ${svgPts[svgPts.length - 1].sx.toFixed(1)} ${H} L 0 ${H} Z`
-    : '';
-
-  function getValueAtX(relX: number): number {
-    let y = 0;
-    for (const p of pts) {
-      if (p.x <= relX) y = p.y;
-      else break;
-    }
-    return y;
-  }
-
-  function handlePointer(clientX: number) {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setHoverRel(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)));
-  }
-
-  const hoverValue = hoverRel !== null ? getValueAtX(hoverRel) : null;
-  const hoverSvgX = hoverRel !== null ? hoverRel * W : null;
-  const hoverSvgY = (hoverRel !== null && hoverValue !== null && total > 0)
-    ? H - (hoverValue / total) * H : H;
-
-  const tooltipPct = hoverRel !== null ? Math.max(5, Math.min(95, hoverRel * 100)) : null;
-  const axisLabels = getXAxisLabels(period, now);
+  // Clamp tooltip so it stays inside the card
+  const tooltipPct = hoveredIdx !== null
+    ? Math.max(5, Math.min(95, ((hoveredIdx + 0.5) / n) * 100))
+    : 50;
 
   return (
-    <div
-      ref={containerRef}
-      style={{ position: 'relative', userSelect: 'none', touchAction: 'none' }}
-      onMouseMove={e => handlePointer(e.clientX)}
-      onMouseLeave={() => setHoverRel(null)}
-      onTouchMove={e => handlePointer(e.touches[0].clientX)}
-      onTouchEnd={() => setHoverRel(null)}
-    >
+    <div ref={containerRef} style={{ position: 'relative' }}>
       {/* Tooltip */}
-      {tooltipPct !== null && hoverValue !== null && (
+      {hoveredIdx !== null && (
         <div style={{
           position: 'absolute',
           bottom: 'calc(100% + 4px)',
@@ -300,42 +291,55 @@ function StepChart({
           pointerEvents: 'none',
           zIndex: 10,
         }}>
-          ${hoverValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          ${amounts[hoveredIdx].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
       )}
 
-      <svg
-        width="100%"
-        height={H}
-        viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="none"
-        style={{ display: 'block', cursor: hoverRel !== null ? 'crosshair' : 'default' }}
+      {/* Bars */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap,
+          height: 72,
+        }}
+        onMouseLeave={() => setHoveredIdx(null)}
       >
-        <defs>
-          <linearGradient id="stepFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.18)" />
-            <stop offset="100%" stopColor="rgba(255,255,255,0.01)" />
-          </linearGradient>
-        </defs>
-        {areaPath && <path d={areaPath} fill="url(#stepFill)" />}
-        <path d={linePath} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="1.5" strokeLinejoin="round" />
-        {hoverSvgX !== null && (
-          <>
-            <line
-              x1={hoverSvgX} y1={0} x2={hoverSvgX} y2={H}
-              stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeDasharray="3 2"
-            />
-            <circle cx={hoverSvgX} cy={hoverSvgY} r="2.5" fill="white" />
-          </>
-        )}
-      </svg>
+        {buckets.map((b, i) => (
+          <div
+            key={i}
+            style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'flex-end', cursor: 'default' }}
+            onMouseEnter={() => setHoveredIdx(i)}
+          >
+            <div style={{
+              width: '100%',
+              height: `${Math.max(2, (amounts[i] / maxAmount) * 72)}px`,
+              background: `rgba(255,255,255,${b.isCurrent ? 0.95 : 0.38})`,
+              borderRadius: 2,
+            }} />
+          </div>
+        ))}
+      </div>
 
-      {/* X-axis ghost labels */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-        {axisLabels.map(label => (
-          <span key={label} style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', fontWeight: 500, lineHeight: 1 }}>
-            {label}
-          </span>
+      {/* X labels */}
+      <div style={{ display: 'flex', gap, marginTop: 6 }}>
+        {buckets.map((b, i) => (
+          <div key={i} style={{ flex: 1, position: 'relative', height: 12 }}>
+            {b.label && (
+              <span style={{
+                position: 'absolute',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                fontSize: 9,
+                color: 'rgba(255,255,255,0.35)',
+                fontWeight: 500,
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+              }}>
+                {b.label}
+              </span>
+            )}
+          </div>
         ))}
       </div>
     </div>
@@ -354,18 +358,18 @@ export default function DashboardClient({
   const [period, setPeriod] = useState<Period>('1M');
   const now = new Date();
 
-  const filtered = getFilteredReceipts(receipts, period, now);
-  const { pts, total } = getCumulativePoints(receipts, period, now);
-  const catData = getCatData(receipts, items, period, now);
-  const catTotal = catData.reduce((s, c) => s + c.total, 0) || 1;
+  const filtered    = getFilteredReceipts(receipts, period, now);
+  const total       = filtered.reduce((s, r) => s + r.total, 0);
+  const catData     = getCatData(receipts, items, period, now);
+  const catTotal    = catData.reduce((s, c) => s + c.total, 0) || 1;
   const { label, prevLabel } = getPeriodBounds(period, now);
-  const prevSpend = getPrevSpend(receipts, period, now);
+  const prevSpend   = getPrevSpend(receipts, period, now);
 
   let deltaText = '';
-  let deltaUp = false;
+  let deltaUp   = false;
   if (prevSpend > 0) {
     const pct = Math.abs(((total - prevSpend) / prevSpend) * 100).toFixed(0);
-    deltaUp = total > prevSpend;
+    deltaUp   = total > prevSpend;
     deltaText = `${deltaUp ? '↑' : '↓'} ${pct}% vs ${prevLabel}`;
   }
 
@@ -395,7 +399,7 @@ export default function DashboardClient({
             {label}
           </p>
           <div style={{ display: 'flex', gap: 2, background: 'rgba(0,0,0,0.25)', borderRadius: 100, padding: '3px 4px' }}>
-            {(['1W', '1M', '3M', 'YTD'] as Period[]).map(p => (
+            {(['1W', '1M', '3M', 'YTD', '1Y'] as Period[]).map(p => (
               <button
                 key={p}
                 type="button"
@@ -431,8 +435,8 @@ export default function DashboardClient({
           </span>
         </div>
 
-        {/* Step-function chart */}
-        <StepChart pts={pts} total={total} period={period} now={now} />
+        {/* Bar chart */}
+        <BarChart receipts={receipts} period={period} now={now} />
       </section>
 
       {/* ── Spending by Category ────────────────────────────────────────── */}
