@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { preprocessImage } from '@/lib/imagePreprocess';
 
 export default function EmptyStateCTA({ userName }: { userName: string }) {
   const router = useRouter();
@@ -13,8 +14,9 @@ export default function EmptyStateCTA({ userName }: { userName: string }) {
     setUploading(true);
     setError('');
     try {
+      const processed = await preprocessImage(file);
       const form = new FormData();
-      form.append('image', file);
+      form.append('image', processed);
       const res = await fetch('/api/receipts/upload', { method: 'POST', body: form });
       const data = await res.json();
       if (res.status === 409) { router.push(`/receipts/${data.id}`); return; }

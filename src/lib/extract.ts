@@ -8,7 +8,7 @@ Return ONLY valid JSON — no markdown, no explanation. Use empty string "" for 
 
 export async function extractReceiptFromImage(imageBase64: string, mediaType: string): Promise<ExtractedReceipt> {
   const response = await client.messages.create({
-    model: 'claude-opus-4-7',
+    model: 'claude-sonnet-4-6',
     max_tokens: 3000,
     system: [
       {

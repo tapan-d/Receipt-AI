@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { preprocessImage } from '@/lib/imagePreprocess';
 
 export default function UploadFAB() {
   const router = useRouter();
@@ -11,8 +12,9 @@ export default function UploadFAB() {
   const upload = async (file: File) => {
     setUploading(true);
     try {
+      const processed = await preprocessImage(file);
       const form = new FormData();
-      form.append('image', file);
+      form.append('image', processed);
       const res = await fetch('/api/receipts/upload', { method: 'POST', body: form });
       const data = await res.json();
       if (res.status === 409 || res.ok) {

@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { preprocessImage } from '@/lib/imagePreprocess';
 
 export default function DashboardUpload() {
   const router = useRouter();
@@ -12,8 +13,9 @@ export default function DashboardUpload() {
   const upload = useCallback(async (file: File) => {
     setState('uploading');
     try {
+      const processed = await preprocessImage(file);
       const form = new FormData();
-      form.append('image', file);
+      form.append('image', processed);
       const res = await fetch('/api/receipts/upload', { method: 'POST', body: form });
       const data = await res.json();
       if (res.status === 409) {

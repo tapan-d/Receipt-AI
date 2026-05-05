@@ -21,6 +21,14 @@ export async function POST(request: NextRequest) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+
+    if (buffer.length > 10 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: `Image too large (${(buffer.length / 1024 / 1024).toFixed(1)} MB). Maximum is 10 MB.` },
+        { status: 413 }
+      );
+    }
+
     const imageBase64 = buffer.toString('base64');
     const mediaType = file.type || 'image/jpeg';
 

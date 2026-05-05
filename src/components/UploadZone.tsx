@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { preprocessImage } from '@/lib/imagePreprocess';
 
 export default function UploadZone() {
   const router = useRouter();
@@ -11,10 +12,12 @@ export default function UploadZone() {
 
   const upload = useCallback(async (file: File) => {
     setStatus('uploading');
-    setMessage('Extracting receipt data...');
+    setMessage('Preparing image...');
     try {
+      const processed = await preprocessImage(file);
       const form = new FormData();
-      form.append('image', file);
+      form.append('image', processed);
+      setMessage('Extracting receipt data...');
       const res = await fetch('/api/receipts/upload', { method: 'POST', body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');
