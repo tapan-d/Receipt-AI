@@ -88,6 +88,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ answer });
   } catch (err) {
     console.error('Query error:', err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

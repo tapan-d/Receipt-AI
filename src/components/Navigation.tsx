@@ -12,7 +12,7 @@ const NAV = [
   { href: '/trends',   label: 'Trends' },
 ];
 
-export default function Navigation() {
+export default function Navigation({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   const { data: session } = useSession();
 
@@ -67,6 +67,21 @@ export default function Navigation() {
                 </Link>
               );
             })}
+            {isAdmin && (() => {
+              const active = pathname === '/admin';
+              return (
+                <Link href="/admin" style={{
+                  fontSize: 13, padding: '6px 12px', borderRadius: 8,
+                  color: active ? 'var(--brand)' : 'var(--ink-3)',
+                  background: active ? 'var(--brand-light)' : 'transparent',
+                  fontWeight: active ? 600 : 400,
+                  textDecoration: 'none',
+                  transition: 'background 0.15s, color 0.15s',
+                }}>
+                  Admin
+                </Link>
+              );
+            })()}
           </nav>
         </div>
 

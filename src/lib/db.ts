@@ -42,6 +42,22 @@ async function ensureSchema(): Promise<void> {
       vector vector(1024)
     )
   `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS allowed_emails (
+      email TEXT PRIMARY KEY,
+      added_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  // One-time migration: seed from ALLOWED_EMAILS env var if table is empty
+  const envEmails = process.env.ALLOWED_EMAILS?.split(',').map((e) => e.trim()).filter(Boolean) ?? [];
+  if (envEmails.length > 0) {
+    const [{ count }] = await sql`SELECT COUNT(*)::int AS count FROM allowed_emails` as { count: number }[];
+    if (count === 0) {
+      for (const email of envEmails) {
+        await sql`INSERT INTO allowed_emails (email) VALUES (${email}) ON CONFLICT DO NOTHING`;
+      }
+    }
+  }
 }
 
 function ready(): Promise<void> {
@@ -174,4 +190,35 @@ export async function deleteReceipt(id: string): Promise<void> {
   const sql = getDb();
   await sql`DELETE FROM receipt_items WHERE receipt_id = ${id}`;
   await sql`DELETE FROM receipts WHERE id = ${id}`;
+}
+
+export async function isEmailAllowed(email: string): Promise<boolean> {
+  await ready();
+  const sql = getDb();
+  const [row] = await sql`
+    SELECT
+      (SELECT COUNT(*)::int FROM allowed_emails) AS total,
+      (SELECT COUNT(*)::int FROM allowed_emails WHERE email = ${email}) AS match
+  ` as { total: number; match: number }[];
+  if (row.total === 0) return true;
+  return row.match > 0;
+}
+
+export async function getAllowedEmails(): Promise<string[]> {
+  await ready();
+  const sql = getDb();
+  const rows = await sql`SELECT email FROM allowed_emails ORDER BY added_at ASC`;
+  return rows.map((r) => r.email as string);
+}
+
+export async function addAllowedEmail(email: string): Promise<void> {
+  await ready();
+  const sql = getDb();
+  await sql`INSERT INTO allowed_emails (email) VALUES (${email}) ON CONFLICT DO NOTHING`;
+}
+
+export async function removeAllowedEmail(email: string): Promise<void> {
+  await ready();
+  const sql = getDb();
+  await sql`DELETE FROM allowed_emails WHERE email = ${email}`;
 }

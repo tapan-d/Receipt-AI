@@ -13,6 +13,6 @@ export async function GET() {
     return NextResponse.json(receipts);
   } catch (err) {
     console.error('Receipts list error:', err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

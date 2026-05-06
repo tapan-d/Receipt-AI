@@ -89,7 +89,8 @@ flowchart TD
 
 ## Features
 
-- **Authentication** — Google and Apple OAuth via NextAuth; invite-only mode via email allowlist
+- **Authentication** — Google and Apple OAuth via NextAuth; invite-only mode via DB-backed email allowlist
+- **Admin panel** — `/admin` tab (visible only to admin) to manage allowed emails on the fly — no redeploy needed
 - **Scan receipts** — upload or snap a receipt via the floating action bar; Claude extracts store, items, tax, payment, rewards, POS details
 - **Non-receipt rejection** — non-receipt images are rejected before any data is stored
 - **Duplicate detection** — same store + date + total is rejected with a redirect to the existing receipt
@@ -164,8 +165,12 @@ flowchart TD
    AUTH_GOOGLE_ID=your-client-id.apps.googleusercontent.com
    AUTH_GOOGLE_SECRET=your-client-secret
 
-   # Invite-only allowlist (remove this var entirely to open access)
+   # Invite-only allowlist — seeded into DB on first run, can be removed after
+   # Remove entirely to open access to all authenticated users
    ALLOWED_EMAILS=you@example.com,friend@example.com
+
+   # Admin panel — server-side only, never exposed to the browser
+   ADMIN_EMAILS=you@example.com
 
    # Neon
    DATABASE_URL=postgresql://user:pass@ep-xxx.us-east-1.aws.neon.tech/neondb?sslmode=require
