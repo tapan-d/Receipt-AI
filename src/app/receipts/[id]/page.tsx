@@ -107,6 +107,7 @@ export default function ReceiptDetailPage() {
   for (const item of items) catCounts[item.category] = (catCounts[item.category] ?? 0) + 1;
   const primaryCat = Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'Other';
   const hasTotals = receipt.subtotal > 0 || receipt.tax_amount > 0 || receipt.discount > 0;
+  const multiPayments = receipt.payments && receipt.payments.length > 1 ? receipt.payments : null;
 
   return (
     <>
@@ -322,6 +323,9 @@ export default function ReceiptDetailPage() {
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {items.map((item) => {
                 const colors = CAT_COLORS[item.category] ?? CAT_COLORS.Other;
+                const discountPct = item.discount > 0
+                  ? Math.round((item.discount / (item.total_price + item.discount)) * 100)
+                  : 0;
                 return (
                   <div key={item.id} style={{
                     display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px',
@@ -341,9 +345,19 @@ export default function ReceiptDetailPage() {
                       </p>
                       <p style={{ margin: '1px 0 0', fontSize: 11, color: '#7B8099' }}>{item.category}</p>
                     </div>
-                    <p className="mono" style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#0D0F1A', flexShrink: 0 }}>
-                      ${item.total_price.toFixed(2)}
-                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
+                      <p className="mono" style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#0D0F1A' }}>
+                        ${item.total_price.toFixed(2)}
+                      </p>
+                      {item.discount > 0 && (
+                        <span style={{
+                          fontSize: 11, fontWeight: 500, color: '#059669',
+                          background: '#D1FAE5', borderRadius: 6, padding: '1px 6px',
+                        }}>
+                          −${item.discount.toFixed(2)} ({discountPct}% off)
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -372,6 +386,18 @@ export default function ReceiptDetailPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderTop: '1px solid #E8EAF2' }}>
                 <span style={{ fontSize: 13, color: '#7B8099' }}>Tax{receipt.tax_rate > 0 ? ` (${receipt.tax_rate}%)` : ''}</span>
                 <span className="mono" style={{ fontSize: 13, color: '#0D0F1A' }}>${receipt.tax_amount.toFixed(2)}</span>
+              </div>
+            )}
+            {receipt.gratuity > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderTop: '1px solid #E8EAF2' }}>
+                <span style={{ fontSize: 13, color: '#7B8099' }}>Gratuity</span>
+                <span className="mono" style={{ fontSize: 13, color: '#0D0F1A' }}>${receipt.gratuity.toFixed(2)}</span>
+              </div>
+            )}
+            {receipt.tip > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderTop: '1px solid #E8EAF2' }}>
+                <span style={{ fontSize: 13, color: '#7B8099' }}>Tip</span>
+                <span className="mono" style={{ fontSize: 13, color: '#0D0F1A' }}>${receipt.tip.toFixed(2)}</span>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderTop: '1px solid #E8EAF2' }}>
@@ -458,16 +484,27 @@ export default function ReceiptDetailPage() {
                 <span className="mono" style={{ fontSize: 13, color: '#0D0F1A' }}>{receipt.order_number}</span>
               </InfoRow>
             )}
-            {receipt.payment_method && (
+            {(receipt.payment_method || multiPayments) && (
               <InfoRow icon={<IconTile>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7B8099" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
                 </svg>
               </IconTile>}>
                 <span style={{ fontSize: 11, color: '#7B8099' }}>Payment</span>
-                <span style={{ fontSize: 14, color: '#0D0F1A' }}>
-                  {receipt.payment_method}{receipt.card_last4 ? ` ···· ${receipt.card_last4}` : ''}
-                </span>
+                {multiPayments ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 1 }}>
+                    {multiPayments.map((p, i) => (
+                      <span key={i} style={{ fontSize: 13, color: '#0D0F1A', display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                        <span>{p.method}{p.card_last4 ? ` ···· ${p.card_last4}` : ''}</span>
+                        <span className="mono">${p.amount.toFixed(2)}</span>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span style={{ fontSize: 14, color: '#0D0F1A' }}>
+                    {receipt.payment_method}{receipt.card_last4 ? ` ···· ${receipt.card_last4}` : ''}
+                  </span>
+                )}
               </InfoRow>
             )}
           </SectionCard>

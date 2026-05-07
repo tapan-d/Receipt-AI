@@ -164,6 +164,9 @@ export default function ItemsPage() {
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {filtered.map((item, i) => {
             const colors = CAT_COLORS[item.category] ?? CAT_COLORS.Other;
+            const discountPct = item.discount > 0
+              ? Math.round((item.discount / (item.total_price + item.discount)) * 100)
+              : 0;
             return (
               <Link key={item.id} href={`/receipts/${item.receipt_id}`} className="receipt-row" style={{
                 display: 'flex', alignItems: 'center', gap: 12,
@@ -192,9 +195,19 @@ export default function ItemsPage() {
                     {item.store_name} · {relativeDate(item.purchase_date)}
                   </p>
                 </div>
-                <p className="mono" style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#0D0F1A', flexShrink: 0 }}>
-                  ${item.total_price.toFixed(2)}
-                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
+                  <p className="mono" style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#0D0F1A' }}>
+                    ${item.total_price.toFixed(2)}
+                  </p>
+                  {item.discount > 0 && (
+                    <span style={{
+                      fontSize: 11, fontWeight: 500, color: '#059669',
+                      background: '#D1FAE5', borderRadius: 6, padding: '1px 6px',
+                    }}>
+                      −${item.discount.toFixed(2)} ({discountPct}% off)
+                    </span>
+                  )}
+                </div>
               </Link>
             );
           })}

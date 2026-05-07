@@ -8,8 +8,16 @@ export interface ReceiptItem {
   category: string;
   quantity: number;
   unit_price: number;
+  discount: number;
   total_price: number;
   vector: number[];
+}
+
+export interface PaymentMethod {
+  method: string;
+  amount: number;
+  card_last4: string;
+  card_aid: string;
 }
 
 export interface Receipt {
@@ -37,6 +45,7 @@ export interface Receipt {
   payment_amount: number;
   card_last4: string;
   card_aid: string;
+  payments: PaymentMethod[] | null;
   // Rewards
   reward_card_number: string;
   reward_program_name: string;
@@ -44,6 +53,9 @@ export interface Receipt {
   reward_points_required: number;
   // Discount
   discount_code: string | null;
+  // Restaurant
+  tip: number;
+  gratuity: number;
   // POS / meta
   pos_system: string;
   image_path: string;
@@ -72,17 +84,21 @@ export interface ExtractedReceipt {
   payment_amount: number;
   card_last4: string;
   card_aid: string;
+  payments: PaymentMethod[];
   reward_card_number: string;
   reward_program_name: string;
   reward_points_current: number;
   reward_points_required: number;
   discount_code: string | null;
+  tip: number;
+  gratuity: number;
   pos_system: string;
   items: {
     name: string;
     category: string;
     quantity: number;
     unit_price: number;
+    discount: number;
     total_price: number;
   }[];
 }

@@ -31,6 +31,9 @@ async function ensureSchema(): Promise<void> {
     )
   `;
   await sql`ALTER TABLE receipts ADD COLUMN IF NOT EXISTS discount_code TEXT`;
+  await sql`ALTER TABLE receipts ADD COLUMN IF NOT EXISTS tip FLOAT8 DEFAULT 0`;
+  await sql`ALTER TABLE receipts ADD COLUMN IF NOT EXISTS gratuity FLOAT8 DEFAULT 0`;
+  await sql`ALTER TABLE receipts ADD COLUMN IF NOT EXISTS payments JSONB`;
   await sql`
     CREATE TABLE IF NOT EXISTS receipt_items (
       id TEXT PRIMARY KEY,
@@ -38,10 +41,11 @@ async function ensureSchema(): Promise<void> {
       user_id TEXT NOT NULL,
       store_name TEXT, purchase_date TEXT,
       item_name TEXT, category TEXT,
-      quantity FLOAT8, unit_price FLOAT8, total_price FLOAT8,
+      quantity FLOAT8, unit_price FLOAT8, discount FLOAT8 DEFAULT 0, total_price FLOAT8,
       vector vector(1024)
     )
   `;
+  await sql`ALTER TABLE receipt_items ADD COLUMN IF NOT EXISTS discount FLOAT8 DEFAULT 0`;
   await sql`
     CREATE TABLE IF NOT EXISTS allowed_emails (
       email TEXT PRIMARY KEY,
@@ -75,18 +79,20 @@ export async function saveReceipt(receipt: Receipt, items: ReceiptItem[]): Promi
       store_website, store_number, purchase_date, purchase_time,
       employee_name, order_number, subtotal, discount, tax_rate,
       tax_amount, total, payment_method, payment_amount,
-      card_last4, card_aid, reward_card_number, reward_program_name,
+      card_last4, card_aid, payments, reward_card_number, reward_program_name,
       reward_points_current, reward_points_required, discount_code,
-      pos_system, image_path, item_count, created_at
+      tip, gratuity, pos_system, image_path, item_count, created_at
     ) VALUES (
       ${receipt.id}, ${receipt.user_id}, ${receipt.store_name}, ${receipt.store_address},
       ${receipt.store_phone}, ${receipt.store_website}, ${receipt.store_number},
       ${receipt.purchase_date}, ${receipt.purchase_time}, ${receipt.employee_name},
       ${receipt.order_number}, ${receipt.subtotal}, ${receipt.discount}, ${receipt.tax_rate},
       ${receipt.tax_amount}, ${receipt.total}, ${receipt.payment_method}, ${receipt.payment_amount},
-      ${receipt.card_last4}, ${receipt.card_aid}, ${receipt.reward_card_number},
-      ${receipt.reward_program_name}, ${receipt.reward_points_current},
-      ${receipt.reward_points_required}, ${receipt.discount_code},
+      ${receipt.card_last4}, ${receipt.card_aid},
+      ${receipt.payments ? JSON.stringify(receipt.payments) : null},
+      ${receipt.reward_card_number}, ${receipt.reward_program_name},
+      ${receipt.reward_points_current}, ${receipt.reward_points_required},
+      ${receipt.discount_code}, ${receipt.tip}, ${receipt.gratuity},
       ${receipt.pos_system}, ${receipt.image_path},
       ${receipt.item_count}, ${receipt.created_at}
     )
@@ -98,22 +104,22 @@ export async function saveReceipt(receipt: Receipt, items: ReceiptItem[]): Promi
       await sql`
         INSERT INTO receipt_items (
           id, receipt_id, user_id, store_name, purchase_date,
-          item_name, category, quantity, unit_price, total_price, vector
+          item_name, category, quantity, unit_price, discount, total_price, vector
         ) VALUES (
           ${item.id}, ${item.receipt_id}, ${item.user_id}, ${item.store_name},
           ${item.purchase_date}, ${item.item_name}, ${item.category},
-          ${item.quantity}, ${item.unit_price}, ${item.total_price}, ${vec}::vector
+          ${item.quantity}, ${item.unit_price}, ${item.discount}, ${item.total_price}, ${vec}::vector
         )
       `;
     } else {
       await sql`
         INSERT INTO receipt_items (
           id, receipt_id, user_id, store_name, purchase_date,
-          item_name, category, quantity, unit_price, total_price
+          item_name, category, quantity, unit_price, discount, total_price
         ) VALUES (
           ${item.id}, ${item.receipt_id}, ${item.user_id}, ${item.store_name},
           ${item.purchase_date}, ${item.item_name}, ${item.category},
-          ${item.quantity}, ${item.unit_price}, ${item.total_price}
+          ${item.quantity}, ${item.unit_price}, ${item.discount}, ${item.total_price}
         )
       `;
     }
@@ -143,7 +149,7 @@ export async function getItemsByReceiptId(receiptId: string): Promise<ReceiptIte
   const sql = getDb();
   const rows = await sql`
     SELECT id, receipt_id, user_id, store_name, purchase_date,
-           item_name, category, quantity, unit_price, total_price
+           item_name, category, quantity, unit_price, discount, total_price
     FROM receipt_items WHERE receipt_id = ${receiptId}
   `;
   return rows.map(r => ({ ...r, vector: [] })) as unknown as ReceiptItem[];
@@ -154,7 +160,7 @@ export async function getAllItems(userId: string): Promise<ReceiptItem[]> {
   const sql = getDb();
   const rows = await sql`
     SELECT id, receipt_id, user_id, store_name, purchase_date,
-           item_name, category, quantity, unit_price, total_price
+           item_name, category, quantity, unit_price, discount, total_price
     FROM receipt_items WHERE user_id = ${userId}
   `;
   return rows.map(r => ({ ...r, vector: [] })) as unknown as ReceiptItem[];
@@ -170,7 +176,7 @@ export async function searchItemsByVector(
   const vec = `[${queryVector.join(',')}]`;
   const rows = await sql`
     SELECT id, receipt_id, user_id, store_name, purchase_date,
-           item_name, category, quantity, unit_price, total_price
+           item_name, category, quantity, unit_price, discount, total_price
     FROM receipt_items
     WHERE user_id = ${userId} AND vector IS NOT NULL
     ORDER BY vector <=> ${vec}::vector
