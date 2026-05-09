@@ -3,7 +3,7 @@ import type { ExtractedReceipt } from './types';
 
 const client = new Anthropic();
 
-const EXTRACTION_SYSTEM = `You are a receipt parsing assistant. First determine if the image is a retail/grocery/restaurant receipt. If it is not, return {"is_receipt": false, "rejection_reason": "<brief reason>"}. If it is a receipt, extract all structured data.
+const EXTRACTION_SYSTEM = `You are a receipt parsing assistant. Determine if the image is a valid purchase receipt, then extract all structured data.
 Return ONLY valid JSON — no markdown, no explanation. Use empty string "" for missing text fields and 0 for missing numeric fields.`;
 
 export async function extractReceiptFromImage(imageBase64: string, mediaType: string): Promise<ExtractedReceipt> {
@@ -31,8 +31,31 @@ export async function extractReceiptFromImage(imageBase64: string, mediaType: st
           },
           {
             type: 'text',
-            text: `If the image is not a retail/grocery/restaurant receipt, return ONLY:
-{"is_receipt": false, "rejection_reason": "<brief description of what the image actually is>"}
+            text: `ACCEPT these document types:
+- Retail, grocery, clothing, electronics, home improvement, furniture, pet store receipts
+- Restaurant, cafe, coffee shop, bar receipts
+- Gas station / fuel receipts
+- Pharmacy receipts (CVS, Walgreens, etc.)
+- Salon, barbershop, spa, dry cleaning, car wash receipts
+- Hotel, parking, transit receipts
+- Movie theater, gym, entertainment venue receipts
+- Subscription confirmation receipts (Netflix, Spotify, app stores, etc.)
+- Any point-of-sale receipt showing goods or services purchased
+
+REJECT and return {"is_receipt": false, "rejection_reason": "..."} for:
+- Bank or credit card statements
+- Utility, phone, or rent bills / invoices
+- Insurance documents or Explanation of Benefits
+- Tax documents (W-2, 1099, etc.)
+- Contracts or agreements
+- Shipping labels or tracking pages
+- Peer-to-peer payment screenshots (Venmo, Zelle, PayPal transfers)
+- Coupons, promotional flyers, or menus
+- Boarding passes or event tickets (not purchase receipts)
+- ATM withdrawal receipts
+- Donation receipts
+- Medical bills or healthcare invoices
+- Anything that is not a record of a retail/service purchase transaction
 
 Otherwise extract all data and return this exact JSON structure (no other text):
 {
@@ -74,7 +97,7 @@ Otherwise extract all data and return this exact JSON structure (no other text):
   "items": [
     {
       "name": "string",
-      "category": "Dairy|Produce|Meat & Seafood|Bakery|Beverages|Snacks|Frozen Foods|Canned & Packaged|Oils & Condiments|Household|Personal Care|Other",
+      "category": "Dairy|Produce|Meat & Seafood|Bakery|Beverages|Snacks|Frozen Foods|Canned & Packaged|Oils & Condiments|Household|Personal Care|Clothing|Electronics|Fuel|Pharmacy|Beauty|Auto|Pet|Travel|Entertainment|Subscription|Other",
       "quantity": number,
       "unit_price": number,
       "discount": number,
@@ -104,6 +127,6 @@ Rules:
     throw new Error('No text response from Claude');
   }
 
-  const jsonText = textBlock.text.trim();
+  const jsonText = textBlock.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   return JSON.parse(jsonText) as ExtractedReceipt;
 }

@@ -24,6 +24,16 @@ const CAT_COLORS: Record<string, { fg: string; bg: string }> = {
   'Oils & Condiments': { fg: '#B45309', bg: '#FEF3C7' },
   Household:           { fg: '#8B5CF6', bg: '#EDE9FE' },
   'Personal Care':     { fg: '#EC4899', bg: '#FCE7F3' },
+  Clothing:            { fg: '#EC4899', bg: '#FCE7F3' },
+  Electronics:         { fg: '#0EA5E9', bg: '#E0F2FE' },
+  Fuel:                { fg: '#B45309', bg: '#FEF3C7' },
+  Pharmacy:            { fg: '#059669', bg: '#D1FAE5' },
+  Beauty:              { fg: '#EC4899', bg: '#FCE7F3' },
+  Auto:                { fg: '#7B8099', bg: '#F2F3F7' },
+  Pet:                 { fg: '#B45309', bg: '#FEF3C7' },
+  Travel:              { fg: '#2952E3', bg: '#EEF2FF' },
+  Entertainment:       { fg: '#8B5CF6', bg: '#EDE9FE' },
+  Subscription:        { fg: '#6366F1', bg: '#EEF2FF' },
   Other:               { fg: '#6366F1', bg: '#EEF2FF' },
 };
 
@@ -367,10 +377,11 @@ export default function DashboardClient({
 
   let deltaText = '';
   let deltaUp   = false;
-  if (prevSpend > 0) {
-    const pct = Math.abs(((total - prevSpend) / prevSpend) * 100).toFixed(0);
-    deltaUp   = total > prevSpend;
-    deltaText = `${deltaUp ? '↑' : '↓'} ${pct}% vs ${prevLabel}`;
+  if (prevSpend >= 1) {
+    const rawPct = Math.abs(((total - prevSpend) / prevSpend) * 100);
+    const pct    = rawPct > 999 ? '>999' : rawPct.toFixed(0);
+    deltaUp      = total > prevSpend;
+    deltaText    = `${deltaUp ? '↑' : '↓'} ${pct}% vs ${prevLabel}`;
   }
 
   const recentFiltered = [...filtered]

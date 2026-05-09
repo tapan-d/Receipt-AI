@@ -20,6 +20,16 @@ const CAT_COLORS: Record<string, { fg: string; bg: string }> = {
   'Oils & Condiments': { fg: '#B45309', bg: '#FEF3C7' },
   Household:           { fg: '#8B5CF6', bg: '#EDE9FE' },
   'Personal Care':     { fg: '#EC4899', bg: '#FCE7F3' },
+  Clothing:            { fg: '#EC4899', bg: '#FCE7F3' },
+  Electronics:         { fg: '#0EA5E9', bg: '#E0F2FE' },
+  Fuel:                { fg: '#B45309', bg: '#FEF3C7' },
+  Pharmacy:            { fg: '#059669', bg: '#D1FAE5' },
+  Beauty:              { fg: '#EC4899', bg: '#FCE7F3' },
+  Auto:                { fg: '#7B8099', bg: '#F2F3F7' },
+  Pet:                 { fg: '#B45309', bg: '#FEF3C7' },
+  Travel:              { fg: '#2952E3', bg: '#EEF2FF' },
+  Entertainment:       { fg: '#8B5CF6', bg: '#EDE9FE' },
+  Subscription:        { fg: '#6366F1', bg: '#EEF2FF' },
   Other:               { fg: '#6366F1', bg: '#EEF2FF' },
 };
 
@@ -343,7 +353,9 @@ export default function ReceiptDetailPage() {
                       <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#0D0F1A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {toTitleCase(item.item_name)}
                       </p>
-                      <p style={{ margin: '1px 0 0', fontSize: 11, color: '#7B8099' }}>{item.category}</p>
+                      <p style={{ margin: '1px 0 0', fontSize: 11, color: '#7B8099' }}>
+                        {item.category}{item.quantity !== 1 ? ` · ×${item.quantity}` : ''}
+                      </p>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
                       <p className="mono" style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#0D0F1A' }}>
