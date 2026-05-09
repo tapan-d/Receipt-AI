@@ -41,8 +41,11 @@ export default function QueryChat() {
   useEffect(() => {
     const q = searchParams.get('q');
     if (q && !didAutoAsk.current) {
-      didAutoAsk.current = true;
-      ask(q);
+      const trimmed = q.trim().slice(0, 500);
+      if (trimmed.length > 0) {
+        didAutoAsk.current = true;
+        ask(trimmed);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
