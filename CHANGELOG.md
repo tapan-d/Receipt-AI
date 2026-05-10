@@ -4,6 +4,22 @@ All notable changes to Ledger.AI are documented here. Format follows [Keep a Cha
 
 ---
 
+## [2026-05-10]
+
+### Fixed
+- Image orientation: server-side Sharp now calls `.rotate()` on every upload (resize + no-resize paths) — auto-applies EXIF rotation and strips the orientation tag. iPhone portrait photos no longer display sideways.
+
+### Changed
+- Image compression targets reduced: max dimension 2048→1600px, target size 3.75MB→1.5MB, compress threshold 1.5MB→0.5MB. Matches WhatsApp's compression — Claude reads receipts fine at this resolution and Vercel's 4.5MB function payload limit is no longer a risk.
+- Server Sharp passes updated to match: 1600/1200/900/700px ladder.
+- Client-side compression switched from `<img>` element + `canvas.drawImage` to `createImageBitmap({ imageOrientation: 'from-image' })` for cleaner orientation handling.
+- Dev-only `[preprocess]` logs in client (gated on `NODE_ENV`, silent in prod).
+
+### Security / Privacy
+- EXIF metadata (including GPS coordinates, camera serial, timestamps) now stripped from stored images via Sharp's `.rotate()` side effect. Old receipts in R2 retain original EXIF.
+
+---
+
 ## [2026-05-09]
 
 ### Added

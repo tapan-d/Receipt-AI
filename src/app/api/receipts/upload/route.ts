@@ -52,41 +52,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Compress for Anthropic if needed; original buffer preserved for R2
-    const ANTHROPIC_RAW_LIMIT = 3.75 * 1024 * 1024;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // Compress for Anthropic if needed — client targets 1.5 MB but server catches anything that slips through
+    const UPLOAD_SIZE_LIMIT = 1.5 * 1024 * 1024;
     let apiBuffer: Buffer = buffer as Buffer;
     let apiMediaType: string = detectedMime;
 
-    if (buffer.length > ANTHROPIC_RAW_LIMIT) {
+    if (buffer.length > UPLOAD_SIZE_LIMIT) {
       log(`sharp: input ${(buffer.length / 1024 / 1024).toFixed(2)}MB exceeds limit, compressing...`);
       const passes: Array<{ width: number; quality: number }> = [
-        { width: 2048, quality: 80 },
-        { width: 1600, quality: 70 },
-        { width: 1024, quality: 65 },
-        { width: 768,  quality: 55 },
+        { width: 1600, quality: 82 },
+        { width: 1200, quality: 72 },
+        { width: 900,  quality: 60 },
+        { width: 700,  quality: 50 },
       ];
       for (const { width, quality } of passes) {
         const compressed = await sharp(buffer)
+          .rotate()  // auto-rotate based on EXIF orientation, then strips the tag
           .resize({ width, height: width, fit: 'inside', withoutEnlargement: true })
           .jpeg({ quality })
           .toBuffer();
         log(`sharp: tried ${width}px@q${quality} → ${(compressed.length / 1024 / 1024).toFixed(2)}MB`);
-        if (compressed.length <= ANTHROPIC_RAW_LIMIT) {
+        if (compressed.length <= UPLOAD_SIZE_LIMIT) {
           apiBuffer = compressed;
           apiMediaType = 'image/jpeg';
           log(`sharp: accepted ${width}px@q${quality}, ratio=${((1 - compressed.length / buffer.length) * 100).toFixed(0)}% reduction`);
           break;
         }
         // last pass: use smallest regardless
-        if (width === 768) {
+        if (width === 700) {
           apiBuffer = compressed;
           apiMediaType = 'image/jpeg';
           logWarn(`sharp: all passes exhausted, using best-effort ${(compressed.length / 1024 / 1024).toFixed(2)}MB`);
         }
       }
     } else {
-      log(`sharp: no compression needed (${(buffer.length / 1024 / 1024).toFixed(2)}MB < limit)`);
+      // Even if no resize needed, run rotate + re-encode to bake in EXIF orientation and strip the tag.
+      // Otherwise raw landscape pixels with EXIF=6 reach Claude/R2 with no rotation applied.
+      const normalized = await sharp(buffer)
+        .rotate()
+        .jpeg({ quality: 90 })
+        .toBuffer();
+      apiBuffer = normalized;
+      apiMediaType = 'image/jpeg';
+      log(`sharp: normalized orientation (${(buffer.length / 1024).toFixed(0)}KB → ${(normalized.length / 1024).toFixed(0)}KB)`);
     }
 
     const imageBase64 = apiBuffer.toString('base64');
