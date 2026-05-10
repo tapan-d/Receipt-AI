@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
+import sharp from 'sharp';
 import { extractReceiptFromImage } from '@/lib/extract';
 import { embedTexts, buildItemEmbedText } from '@/lib/embed';
 import { saveReceipt, getAllReceipts } from '@/lib/db';
@@ -9,6 +10,7 @@ import { sanitizeReceiptField } from '@/lib/promptSecurity';
 import { checkRateLimit, UPLOAD_LIMIT } from '@/lib/rateLimit';
 import { detectMimeFromBuffer } from '@/lib/mimeDetect';
 import type { Receipt, ReceiptItem } from '@/lib/types';
+import { log, logWarn, logError } from '@/lib/log';
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAuth();
@@ -33,6 +35,8 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    log(`upload: file="${file.name}" size=${(buffer.length / 1024 / 1024).toFixed(2)}MB`);
+
     const detectedMime = detectMimeFromBuffer(buffer);
     if (!detectedMime) {
       return NextResponse.json(
@@ -48,17 +52,58 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const imageBase64 = buffer.toString('base64');
-    const mediaType = detectedMime;
+    // Compress for Anthropic if needed; original buffer preserved for R2
+    const ANTHROPIC_RAW_LIMIT = 3.75 * 1024 * 1024;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let apiBuffer: Buffer = buffer as Buffer;
+    let apiMediaType: string = detectedMime;
 
+    if (buffer.length > ANTHROPIC_RAW_LIMIT) {
+      log(`sharp: input ${(buffer.length / 1024 / 1024).toFixed(2)}MB exceeds limit, compressing...`);
+      const passes: Array<{ width: number; quality: number }> = [
+        { width: 2048, quality: 80 },
+        { width: 1600, quality: 70 },
+        { width: 1024, quality: 65 },
+        { width: 768,  quality: 55 },
+      ];
+      for (const { width, quality } of passes) {
+        const compressed = await sharp(buffer)
+          .resize({ width, height: width, fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality })
+          .toBuffer();
+        log(`sharp: tried ${width}px@q${quality} → ${(compressed.length / 1024 / 1024).toFixed(2)}MB`);
+        if (compressed.length <= ANTHROPIC_RAW_LIMIT) {
+          apiBuffer = compressed;
+          apiMediaType = 'image/jpeg';
+          log(`sharp: accepted ${width}px@q${quality}, ratio=${((1 - compressed.length / buffer.length) * 100).toFixed(0)}% reduction`);
+          break;
+        }
+        // last pass: use smallest regardless
+        if (width === 768) {
+          apiBuffer = compressed;
+          apiMediaType = 'image/jpeg';
+          logWarn(`sharp: all passes exhausted, using best-effort ${(compressed.length / 1024 / 1024).toFixed(2)}MB`);
+        }
+      }
+    } else {
+      log(`sharp: no compression needed (${(buffer.length / 1024 / 1024).toFixed(2)}MB < limit)`);
+    }
+
+    const imageBase64 = apiBuffer.toString('base64');
+    const mediaType = apiMediaType;
+
+    log(`extract: sending ${(apiBuffer.length / 1024 / 1024).toFixed(2)}MB to Claude (${apiMediaType})`);
     const extracted = await extractReceiptFromImage(imageBase64, mediaType);
 
     if (!extracted.is_receipt) {
+      logWarn(`extract: rejected — ${extracted.rejection_reason}`);
       return NextResponse.json(
         { error: extracted.rejection_reason || 'Image does not appear to be a receipt.' },
         { status: 422 }
       );
     }
+
+    log(`extract: store="${extracted.store_name}" date=${extracted.purchase_date} total=$${extracted.total} items=${extracted.items.length}`);
 
     const existing = await getAllReceipts(userId);
     const duplicate = existing.find(
@@ -67,6 +112,7 @@ export async function POST(request: NextRequest) {
            Math.abs(r.total - extracted.total) < 0.01
     );
     if (duplicate) {
+      logWarn(`duplicate: matched existing receipt id=${duplicate.id}`);
       return NextResponse.json(
         { error: 'This receipt has already been uploaded.', duplicate: true, id: duplicate.id },
         { status: 409 }
@@ -74,9 +120,10 @@ export async function POST(request: NextRequest) {
     }
 
     const receiptId = randomUUID();
-    const ext = file.name.split('.').pop() || 'jpg';
+    const ext = apiMediaType === 'image/jpeg' ? 'jpg' : (file.name.split('.').pop() || 'jpg');
     const imageKey = `receipts/${receiptId}.${ext}`;
-    await uploadToR2(imageKey, buffer, mediaType);
+    await uploadToR2(imageKey, apiBuffer, apiMediaType);
+    log(`r2: uploaded ${(apiBuffer.length / 1024 / 1024).toFixed(2)}MB as ${imageKey}`);
 
     const now = new Date().toISOString();
 
@@ -138,9 +185,10 @@ export async function POST(request: NextRequest) {
 
     await saveReceipt(receipt, items);
 
+    log(`saved: receipt id=${receiptId} items=${items.length}`);
     return NextResponse.json({ id: receiptId, receipt });
   } catch (err) {
-    console.error('Upload error:', err);
+    logError('upload error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

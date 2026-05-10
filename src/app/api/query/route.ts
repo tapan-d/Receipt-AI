@@ -5,6 +5,7 @@ import { searchItemsByVector, getReceiptsByIds } from '@/lib/db';
 import { requireAuth } from '@/lib/session';
 import { sanitizeQuestion, buildQueryPrompt } from '@/lib/promptSecurity';
 import { checkRateLimit, QUERY_LIMIT } from '@/lib/rateLimit';
+import { log, logWarn, logError } from '@/lib/log';
 
 const client = new Anthropic();
 
@@ -43,15 +44,19 @@ export async function POST(request: NextRequest) {
     }
     const question = validation.value;
 
+    log(`query: q="${question.slice(0, 80)}${question.length > 80 ? '...' : ''}"`);
+
     const queryVector = await embedText(question);
     const items = await searchItemsByVector(queryVector, 100, userId);
 
     if (items.length === 0) {
+      logWarn('query: no items found for user');
       return NextResponse.json({ answer: 'No receipt data found. Please upload some receipts first.' });
     }
 
     const uniqueReceiptIds = [...new Set(items.map(i => i.receipt_id))];
     const receipts = await getReceiptsByIds(uniqueReceiptIds, userId);
+    log(`query: context=${items.length} items across ${receipts.length} receipts`);
     const receiptMap = new Map(receipts.map(r => [r.id, r]));
 
     const receiptSummaries = receipts.map(r => {
@@ -103,9 +108,10 @@ export async function POST(request: NextRequest) {
     const textBlock = response.content.find(b => b.type === 'text');
     const answer = textBlock?.type === 'text' ? textBlock.text : 'No response generated.';
 
+    log(`query: answer=${answer.length} chars`);
     return NextResponse.json({ answer });
   } catch (err) {
-    console.error('Query error:', err);
+    logError('query error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

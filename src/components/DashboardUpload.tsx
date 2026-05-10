@@ -17,7 +17,7 @@ export default function DashboardUpload() {
       const form = new FormData();
       form.append('image', processed);
       const res = await fetch('/api/receipts/upload', { method: 'POST', body: form });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ error: 'Image too large. Please try a smaller image.' }));
       if (res.status === 409) {
         router.push(`/receipts/${data.id}`);
         return;

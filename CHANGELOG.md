@@ -4,6 +4,24 @@ All notable changes to Ledger.AI are documented here. Format follows [Keep a Cha
 
 ---
 
+## [2026-05-09]
+
+### Added
+- Dev-only logger (`src/lib/log.ts`): `log`, `logWarn`, `logError` — silent in production; instrumented upload, receipt detail, query, and items routes with safe log points (no PII)
+
+### Changed
+- Server-side image compression: replaced hard 3.75MB rejection with transparent Sharp compression (4 passes: 2048@q80 → 1600@q70 → 1024@q65 → 768@q55); users never see a size error for images under 10MB
+- R2 storage: stores compressed image instead of original full-size file
+- Client-side compression (`imagePreprocess.ts`): extended quality ladder to 0.40 and added dimension halving (2048→1024→512) to guarantee images stay under 3.75MB
+
+### Fixed
+- Upload components: added `.catch()` on `res.json()` to handle non-JSON 413 responses gracefully (prevented "SyntaxError: Unexpected token" crash)
+
+### Project
+- `CLAUDE.md`: added standing rule to update CHANGELOG before every commit
+
+---
+
 ## [Unreleased]
 
 ### Security

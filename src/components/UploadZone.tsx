@@ -19,7 +19,7 @@ export default function UploadZone() {
       form.append('image', processed);
       setMessage('Extracting receipt data...');
       const res = await fetch('/api/receipts/upload', { method: 'POST', body: form });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ error: 'Image too large. Please try a smaller image.' }));
       if (!res.ok) throw new Error(data.error || 'Upload failed');
       setStatus('done');
       setMessage(`Receipt saved! Redirecting...`);
