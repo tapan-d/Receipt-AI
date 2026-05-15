@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import type { Receipt, ReceiptItem } from './types';
+import { log } from './log';
 
 function getDb() {
   return neon(process.env.DATABASE_URL!);
@@ -11,6 +12,7 @@ let schemaInit: Promise<void> | null = null;
 async function ensureSchema(): Promise<void> {
   const sql = getDb();
   await sql`CREATE EXTENSION IF NOT EXISTS vector`;
+  await sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`;
   await sql`
     CREATE TABLE IF NOT EXISTS receipts (
       id TEXT PRIMARY KEY,
@@ -173,6 +175,8 @@ export async function saveReceipt(receipt: Receipt, items: ReceiptItem[]): Promi
   }
 }
 
+const DUPE_NAME_THRESHOLD = 0.7;
+
 export async function findDuplicateReceipt(
   userId: string,
   storeName: string,
@@ -181,15 +185,28 @@ export async function findDuplicateReceipt(
 ): Promise<Receipt | null> {
   await ready();
   const sql = getDb();
-  const rows = await sql`
-    SELECT * FROM receipts
+  const candidates = await sql`
+    SELECT *, similarity(LOWER(store_name), LOWER(${storeName})) AS name_sim
+    FROM receipts
     WHERE user_id = ${userId}
-      AND LOWER(TRIM(store_name)) = LOWER(TRIM(${storeName}))
       AND purchase_date = ${purchaseDate}
       AND ABS(total - ${total}) < 0.01
-    LIMIT 1
-  `;
-  return rows.length > 0 ? (rows[0] as unknown as Receipt) : null;
+    ORDER BY name_sim DESC
+    LIMIT 5
+  ` as unknown as (Receipt & { name_sim: number })[];
+
+  if (candidates.length === 0) {
+    log(`dupe-check: no candidates for date=${purchaseDate} total=${total}`);
+    return null;
+  }
+
+  for (const row of candidates) {
+    const sim = Number(row.name_sim);
+    const matched = sim >= DUPE_NAME_THRESHOLD;
+    log(`dupe-check: candidate="${row.store_name}" similarity=${sim.toFixed(2)} threshold=${DUPE_NAME_THRESHOLD} matched=${matched}`);
+    if (matched) return row;
+  }
+  return null;
 }
 
 export async function getAllReceipts(userId: string): Promise<Receipt[]> {
