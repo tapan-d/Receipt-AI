@@ -178,6 +178,12 @@ export async function saveReceipt(receipt: Receipt, items: ReceiptItem[]): Promi
 
 const DUPE_NAME_THRESHOLD = 0.7;
 
+export async function setReceiptHash(id: string, userId: string, hash: string): Promise<void> {
+  await ready();
+  const sql = getDb();
+  await sql`UPDATE receipts SET image_hash = ${hash} WHERE id = ${id} AND user_id = ${userId} AND image_hash IS NULL`;
+}
+
 export async function findReceiptByHash(userId: string, hash: string): Promise<Receipt | null> {
   await ready();
   const sql = getDb();

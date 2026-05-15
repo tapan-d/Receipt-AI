@@ -3,7 +3,7 @@ import { randomUUID, createHash } from 'crypto';
 import sharp from 'sharp';
 import { extractReceiptFromImage } from '@/lib/extract';
 import { embedTexts, buildItemEmbedText } from '@/lib/embed';
-import { saveReceipt, findDuplicateReceipt, findReceiptByHash } from '@/lib/db';
+import { saveReceipt, findDuplicateReceipt, findReceiptByHash, setReceiptHash } from '@/lib/db';
 import { uploadToR2 } from '@/lib/r2';
 import { requireAuth } from '@/lib/session';
 import { sanitizeReceiptField } from '@/lib/promptSecurity';
@@ -126,6 +126,10 @@ export async function POST(request: NextRequest) {
     const duplicate = await findDuplicateReceipt(userId, extracted.store_name, extracted.purchase_date, extracted.total);
     if (duplicate) {
       logWarn(`duplicate: matched existing receipt id=${duplicate.id}`);
+      if (!duplicate.image_hash) {
+        await setReceiptHash(duplicate.id, userId, imageHash);
+        log(`hash-backfill: stored hash on existing receipt id=${duplicate.id}`);
+      }
       return NextResponse.json(
         { error: 'This receipt has already been uploaded.', duplicate: true, id: duplicate.id },
         { status: 409 }
