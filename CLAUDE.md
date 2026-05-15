@@ -1,6 +1,21 @@
 @README.md
 @AGENTS.md
 
+## Session Workflow
+
+### Session start — "what to implement next?"
+1. Read `docs/planning/dependency-map.md` — check current state snapshot and tier order
+2. Read relevant feature/ADR docs for the top candidate
+3. Check Linear for any newly completed issues that haven't been synced to docs yet
+4. Recommend the highest-leverage next item with rationale
+
+### Per commit — keep docs in sync
+After every commit:
+1. Update `docs/planning/dependency-map.md` current state snapshot — mark completed items ✓
+2. Update CHANGELOG.md — append to today's date entry (one entry per day, no numbered suffixes)
+3. If a Linear issue was completed: update the relevant doc status (ADR, feature overview, scaling review)
+4. If a new design decision was made: write or update the relevant doc in `/docs/`
+
 ## Standing Rules
 - Update CHANGELOG.md before every commit. One entry per day — append to today's date header if it exists, create it if not. Do not create numbered suffixes.
 
