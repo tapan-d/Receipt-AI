@@ -173,6 +173,25 @@ export async function saveReceipt(receipt: Receipt, items: ReceiptItem[]): Promi
   }
 }
 
+export async function findDuplicateReceipt(
+  userId: string,
+  storeName: string,
+  purchaseDate: string,
+  total: number,
+): Promise<Receipt | null> {
+  await ready();
+  const sql = getDb();
+  const rows = await sql`
+    SELECT * FROM receipts
+    WHERE user_id = ${userId}
+      AND LOWER(TRIM(store_name)) = LOWER(TRIM(${storeName}))
+      AND purchase_date = ${purchaseDate}
+      AND ABS(total - ${total}) < 0.01
+    LIMIT 1
+  `;
+  return rows.length > 0 ? (rows[0] as unknown as Receipt) : null;
+}
+
 export async function getAllReceipts(userId: string): Promise<Receipt[]> {
   await ready();
   const sql = getDb();

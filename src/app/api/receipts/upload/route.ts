@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import sharp from 'sharp';
 import { extractReceiptFromImage } from '@/lib/extract';
 import { embedTexts, buildItemEmbedText } from '@/lib/embed';
-import { saveReceipt, getAllReceipts } from '@/lib/db';
+import { saveReceipt, findDuplicateReceipt } from '@/lib/db';
 import { uploadToR2 } from '@/lib/r2';
 import { requireAuth } from '@/lib/session';
 import { sanitizeReceiptField } from '@/lib/promptSecurity';
@@ -113,12 +113,7 @@ export async function POST(request: NextRequest) {
 
     log(`extract: store="${extracted.store_name}" date=${extracted.purchase_date} total=$${extracted.total} items=${extracted.items.length}`);
 
-    const existing = await getAllReceipts(userId);
-    const duplicate = existing.find(
-      r => r.store_name.trim().toLowerCase() === extracted.store_name.trim().toLowerCase() &&
-           r.purchase_date === extracted.purchase_date &&
-           Math.abs(r.total - extracted.total) < 0.01
-    );
+    const duplicate = await findDuplicateReceipt(userId, extracted.store_name, extracted.purchase_date, extracted.total);
     if (duplicate) {
       logWarn(`duplicate: matched existing receipt id=${duplicate.id}`);
       return NextResponse.json(
@@ -130,16 +125,17 @@ export async function POST(request: NextRequest) {
     const receiptId = randomUUID();
     const ext = apiMediaType === 'image/jpeg' ? 'jpg' : (file.name.split('.').pop() || 'jpg');
     const imageKey = `receipts/${receiptId}.${ext}`;
-    await uploadToR2(imageKey, apiBuffer, apiMediaType);
-    log(`r2: uploaded ${(apiBuffer.length / 1024 / 1024).toFixed(2)}MB as ${imageKey}`);
-
     const now = new Date().toISOString();
 
     const embedTextsInput = extracted.items.map(item =>
       buildItemEmbedText(extracted.store_name, extracted.purchase_date, item.name, item.category, item.unit_price)
     );
 
-    const vectors = extracted.items.length > 0 ? await embedTexts(embedTextsInput) : [];
+    const [, vectors] = await Promise.all([
+      uploadToR2(imageKey, apiBuffer, apiMediaType),
+      extracted.items.length > 0 ? embedTexts(embedTextsInput) : Promise.resolve([]),
+    ]);
+    log(`r2: uploaded ${(apiBuffer.length / 1024 / 1024).toFixed(2)}MB as ${imageKey}`);
 
     const receipt: Receipt = {
       id: receiptId,
