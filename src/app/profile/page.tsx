@@ -18,7 +18,7 @@ export default async function ProfilePage() {
   try {
     const now = new Date();
     const thisMonth = now.toISOString().slice(0, 7);
-    const [receipts, items] = await Promise.all([getAllReceipts(email!), getAllItems(email!)]);
+    const [receipts, items] = await Promise.all([getAllReceipts(session.user.id), getAllItems(session.user.id)]);
     receiptCount = receipts.length;
     itemCount = items.length;
     thisMonthTotal = receipts.filter(r => r.purchase_date.startsWith(thisMonth)).reduce((s, r) => s + r.total, 0);

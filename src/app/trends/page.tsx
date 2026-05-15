@@ -27,7 +27,7 @@ const CAT_COLORS: Record<string, { fg: string; bg: string }> = {
 
 export default async function TrendsPage() {
   const session = await auth();
-  const userId = session?.user?.email;
+  const userId = session?.user?.id;
   if (!userId) redirect('/sign-in');
 
   let receipts: Receipt[] = [];

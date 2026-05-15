@@ -4,6 +4,20 @@ All notable changes to Ledger.AI are documented here. Format follows [Keep a Cha
 
 ---
 
+## [2026-05-14]
+
+### Added
+- `src/instrumentation.ts` — runs `ensureSchema` at server startup so auth adapter tables (`users`, `accounts`, `sessions`, `verification_tokens`) exist before the first OAuth callback fires
+- `migrateUserDataIfNeeded(email, uuid)` in `src/lib/db.ts` — lazy per-user one-time migration re-keys old email-keyed `receipts` and `receipt_items` rows to UUID on first login after deploy
+
+### Changed
+- Auth: wired `@auth/neon-adapter` (v1.11.2) — creates `users`, `accounts`, `verification_tokens` tables in Neon on first boot; user identity now UUID-backed instead of email-as-ID
+- `src/auth.ts`: JWT strategy (30-day expiry), `session.user.id` now exposed as UUID from `users` table; `migrateUserDataIfNeeded` called on first login
+- `src/lib/session.ts`: `requireAuth()` now returns `session.user.id` (UUID) instead of `session.user.email`
+- `deleteReceipt(id, userId)` in `src/lib/db.ts` now scopes the DELETE to the owning user — prevents accidental cross-user deletion from future callers
+
+---
+
 ## [2026-05-10]
 
 ### Fixed

@@ -14,6 +14,16 @@ Active roadmap for Ledger.AI. Supersedes `TODO.md`.
 
 ### High Priority
 
+**User Identity: Neon Adapter + UUID Migration** *(LED-85)*
+Replace email-as-identity with UUID-backed user records via NextAuth Neon adapter.
+- Install `@auth/neon-adapter` — creates `users`, `accounts`, `verification_tokens` tables
+- Update `src/auth.ts` — wire adapter, JWT strategy, expose `session.user.id` (UUID)
+- Update `src/lib/session.ts` — use `session.user.id` instead of `session.user.email`
+- Add `migrateUserDataIfNeeded(email, uuid)` to `src/lib/db.ts` — lazy per-user migration
+- Add `src/middleware.ts` — protect all page routes (currently unprotected)
+- Scope `deleteReceipt` in `src/lib/db.ts` to require `userId`
+- Design doc: https://linear.app/ledger-ai/document/user-identity-and-auth-architecture-e17edc8949b3
+
 **Observability & Logging**
 Structured logs for service health, usage patterns, and cost tracking.
 - Events to log: upload attempt, extraction result (latency, model), duplicate detected, non-receipt rejected, delete, AI query (hashed text, latency, result count), errors
