@@ -34,11 +34,12 @@ export default function NavUploadButton() {
         ref={inputRef}
         type="file"
         accept="image/*"
-        className="hidden"
+        style={{ display: 'none' }}
         disabled={uploading}
         onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); }}
       />
       <button
+        type="button"
         aria-label="Upload receipt"
         onClick={() => inputRef.current?.click()}
         disabled={uploading}

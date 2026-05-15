@@ -52,6 +52,49 @@ async function ensureSchema(): Promise<void> {
       added_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+  // Auth.js / NextAuth adapter tables
+  await sql`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      name TEXT,
+      email TEXT UNIQUE,
+      "emailVerified" TIMESTAMPTZ,
+      image TEXT
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS accounts (
+      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      "userId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      "providerAccountId" TEXT NOT NULL,
+      refresh_token TEXT,
+      access_token TEXT,
+      expires_at INTEGER,
+      token_type TEXT,
+      scope TEXT,
+      id_token TEXT,
+      session_state TEXT,
+      UNIQUE (provider, "providerAccountId")
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      "sessionToken" TEXT NOT NULL UNIQUE,
+      "userId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires TIMESTAMPTZ NOT NULL
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS verification_tokens (
+      identifier TEXT NOT NULL,
+      token TEXT NOT NULL,
+      expires TIMESTAMPTZ NOT NULL,
+      PRIMARY KEY (identifier, token)
+    )
+  `;
   // One-time migration: seed from ALLOWED_EMAILS env var if table is empty
   const envEmails = process.env.ALLOWED_EMAILS?.split(',').map((e) => e.trim()).filter(Boolean) ?? [];
   if (envEmails.length > 0) {
@@ -67,6 +110,10 @@ async function ensureSchema(): Promise<void> {
 function ready(): Promise<void> {
   if (!schemaInit) schemaInit = ensureSchema();
   return schemaInit;
+}
+
+export function ensureSchemaReady(): Promise<void> {
+  return ready();
 }
 
 export async function saveReceipt(receipt: Receipt, items: ReceiptItem[]): Promise<void> {
@@ -144,13 +191,13 @@ export async function getReceiptById(id: string, userId: string): Promise<Receip
   return rows.length > 0 ? (rows[0] as unknown as Receipt) : null;
 }
 
-export async function getItemsByReceiptId(receiptId: string): Promise<ReceiptItem[]> {
+export async function getItemsByReceiptId(receiptId: string, userId: string): Promise<ReceiptItem[]> {
   await ready();
   const sql = getDb();
   const rows = await sql`
     SELECT id, receipt_id, user_id, store_name, purchase_date,
            item_name, category, quantity, unit_price, discount, total_price
-    FROM receipt_items WHERE receipt_id = ${receiptId}
+    FROM receipt_items WHERE receipt_id = ${receiptId} AND user_id = ${userId}
   `;
   return rows.map(r => ({ ...r, vector: [] })) as unknown as ReceiptItem[];
 }
@@ -191,11 +238,21 @@ export async function getReceiptsByIds(ids: string[], userId: string): Promise<R
   return results.filter((r): r is Receipt => r !== null);
 }
 
-export async function deleteReceipt(id: string): Promise<void> {
+export async function deleteReceipt(id: string, userId: string): Promise<void> {
   await ready();
   const sql = getDb();
-  await sql`DELETE FROM receipt_items WHERE receipt_id = ${id}`;
-  await sql`DELETE FROM receipts WHERE id = ${id}`;
+  await sql`DELETE FROM receipt_items WHERE receipt_id = ${id} AND user_id = ${userId}`;
+  await sql`DELETE FROM receipts WHERE id = ${id} AND user_id = ${userId}`;
+}
+
+export async function migrateUserDataIfNeeded(email: string, uuid: string): Promise<void> {
+  const sql = getDb();
+  const [{ count }] = await sql`
+    SELECT COUNT(*)::int AS count FROM receipts WHERE user_id = ${email}
+  ` as { count: number }[];
+  if (count === 0) return;
+  await sql`UPDATE receipts SET user_id = ${uuid} WHERE user_id = ${email}`;
+  await sql`UPDATE receipt_items SET user_id = ${uuid} WHERE user_id = ${email}`;
 }
 
 export async function isEmailAllowed(email: string): Promise<boolean> {

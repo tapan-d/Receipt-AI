@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: 'Receipt not found' }, { status: 404 });
     }
     const [items, image_url] = await Promise.all([
-      getItemsByReceiptId(id),
+      getItemsByReceiptId(id, userId),
       receipt.image_path ? getPresignedImageUrl(receipt.image_path) : Promise.resolve(null),
     ]);
     log(`receipt GET: id=${id} items=${items.length} image=${!!image_url}`);
@@ -46,7 +46,7 @@ export async function DELETE(
       log(`receipt DELETE: id=${id} not found`);
       return NextResponse.json({ error: 'Receipt not found' }, { status: 404 });
     }
-    await deleteReceipt(id);
+    await deleteReceipt(id, userId);
     if (receipt.image_path) {
       await deleteFromR2(receipt.image_path).catch(() => {});
     }
