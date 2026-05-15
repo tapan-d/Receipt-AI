@@ -112,6 +112,7 @@ Otherwise extract all data and return this exact JSON structure (no other text):
 }
 
 Rules:
+- Transcribe store names, addresses, and item names exactly as printed. Do not correct spelling, spacing, or capitalisation.
 - Use today's date (${new Date().toISOString().slice(0, 10)}) if date is unclear.
 - Use "" for any text field not found on the receipt.
 - Use 0 for any numeric field not found.

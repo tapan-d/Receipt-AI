@@ -9,6 +9,7 @@ All notable changes to Ledger.AI are documented here. Format follows [Keep a Cha
 ### Changed
 - Upload pipeline: R2 upload and Voyage embeddings now run concurrently via `Promise.all`
 - Duplicate receipt detection: replaced `getAllReceipts` full scan with targeted `findDuplicateReceipt` — queries by `purchase_date` + `total` exact match, then ranks candidates by `pg_trgm` store name similarity (threshold 0.7). Catches OCR typos like "New India Bazar" vs "New India Bazaar". All candidates and similarity scores logged server-side for debugging.
+- Extraction prompt: instruct Claude to transcribe store names, addresses, and item names exactly as printed — prevents spelling "corrections" like "Bazar" → "Bazaar"
 
 ---
 
