@@ -1,7 +1,8 @@
-# Groups & User Discovery — Product Design Doc
+# Feature: Groups & User Discovery
 
-## Status
-Work in progress. Decisions marked **DECIDED** are locked. Items marked **TODO** need product decisions before implementation.
+**Status:** Design in progress. Decisions marked **DECIDED** are locked. Items marked **TODO** need product decisions before implementation.
+
+**Note:** DB schema uses `user_id TEXT` (email). Will need updating after UUID migration — see [ADR 001](../../adr/001-user-identity-auth-architecture.md).
 
 ---
 
@@ -83,12 +84,14 @@ Needs decisions on roles first, then fill this out:
 
 ## DB Schema (when ready to build)
 
+> **Warning:** `user_id TEXT` below assumes email identity. Update to UUID after [ADR 001](../../adr/001-user-identity-auth-architecture.md) is implemented.
+
 ```sql
 CREATE TABLE groups (
   id UUID PRIMARY KEY,
   name TEXT NOT NULL,
   type TEXT, -- 'household' | 'event' | 'business'
-  created_by TEXT NOT NULL, -- user_id (email)
+  created_by TEXT NOT NULL, -- user_id (email → UUID post-migration)
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

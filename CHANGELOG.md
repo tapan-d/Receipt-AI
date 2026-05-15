@@ -4,20 +4,23 @@ All notable changes to Ledger.AI are documented here. Format follows [Keep a Cha
 
 ---
 
-## [2026-05-15] (2)
+## [2026-05-15]
 
 ### Added
 - Preflight hash deduplication: client hashes raw file via Web Crypto API before upload; `GET /api/receipts/preflight?hash=` checks against stored SHA-256 hashes; duplicate re-uploads rejected instantly without Sharp, Claude, R2, or DB write (~20s saved)
 - `image_hash TEXT` column in `receipts` table; stored on every new upload
-
----
-
-## [2026-05-15]
+- `docs/planning/dependency-map.md` — feature dependency graph, tier-ordered implementation priority, current state snapshot
+- `docs/adr/001-user-identity-auth-architecture.md`, `docs/architecture/product-vision.md`, `docs/architecture/scaling-review-2026-05-12.md`, `docs/features/auto-discovery/overview.md` — pulled from Linear into git (git is now canonical for design)
 
 ### Changed
 - Upload pipeline: R2 upload and Voyage embeddings now run concurrently via `Promise.all`
-- Duplicate receipt detection: replaced `getAllReceipts` full scan with targeted `findDuplicateReceipt` — queries by `purchase_date` + `total` exact match, then ranks candidates by `pg_trgm` store name similarity (threshold 0.7). Catches OCR typos like "New India Bazar" vs "New India Bazaar". All candidates and similarity scores logged server-side for debugging.
-- Extraction prompt: instruct Claude to transcribe store names, addresses, and item names exactly as printed — prevents spelling "corrections" like "Bazar" → "Bazaar"
+- Duplicate receipt detection: replaced `getAllReceipts` full scan with targeted `findDuplicateReceipt` — queries by `purchase_date` + `total` exact match, then ranks candidates by `pg_trgm` store name similarity (threshold 0.7). Catches OCR typos like "New India Bazar" vs "New India Bazaar"
+- Extraction prompt: instruct Claude to transcribe store names exactly as printed — prevents spelling "corrections" like "Bazar" → "Bazaar"
+- Restructured docs: new `/docs/` hierarchy (`adr/`, `features/`, `architecture/`, `planning/`, `archive/`); git canonical for design, Linear for tasks
+- Rewrote `CLAUDE.md` — references `README.md` + `AGENTS.md`, documents docs/tasks split and folder structure
+- Archived root `PLANNING.md` and `SCALING.md` to `docs/archive/`; moved `docs/groups-and-discovery.md` → `docs/features/groups/overview.md`
+- Synced completed Linear issues into docs: UUID identity (LED-85) marked implemented; Groups/Sharing/Billing marked unblocked
+- Added `.playwright-mcp/` to `.gitignore`
 
 ---
 

@@ -1,3 +1,5 @@
+> **Archived 2026-05-15.** Tasks migrated to Linear (https://linear.app/ledger-ai). Design context preserved below.
+
 # Planning
 
 Active roadmap for Ledger.AI. Supersedes `TODO.md`.
