@@ -61,6 +61,7 @@ export interface Receipt {
   // POS / meta
   pos_system: string;
   image_path: string;
+  image_hash: string | null;
   item_count: number;
   created_at: string;
 }

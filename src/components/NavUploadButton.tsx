@@ -8,9 +8,23 @@ export default function NavUploadButton() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
+  const hashFile = async (file: File): Promise<string> => {
+    const buffer = await file.arrayBuffer();
+    const digest = await crypto.subtle.digest('SHA-256', buffer);
+    return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
   const upload = async (file: File) => {
     setUploading(true);
     try {
+      const hash = await hashFile(file);
+      const preflight = await fetch(`/api/receipts/preflight?hash=${hash}`);
+      const preflightData = await preflight.json();
+      if (preflight.status === 409) {
+        router.push(`/receipts/${preflightData.id}`);
+        return;
+      }
+
       const form = new FormData();
       form.append('image', file);
       const res = await fetch('/api/receipts/upload', { method: 'POST', body: form });

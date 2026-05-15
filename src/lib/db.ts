@@ -36,6 +36,7 @@ async function ensureSchema(): Promise<void> {
   await sql`ALTER TABLE receipts ADD COLUMN IF NOT EXISTS tip FLOAT8 DEFAULT 0`;
   await sql`ALTER TABLE receipts ADD COLUMN IF NOT EXISTS gratuity FLOAT8 DEFAULT 0`;
   await sql`ALTER TABLE receipts ADD COLUMN IF NOT EXISTS payments JSONB`;
+  await sql`ALTER TABLE receipts ADD COLUMN IF NOT EXISTS image_hash TEXT`;
   await sql`
     CREATE TABLE IF NOT EXISTS receipt_items (
       id TEXT PRIMARY KEY,
@@ -130,7 +131,7 @@ export async function saveReceipt(receipt: Receipt, items: ReceiptItem[]): Promi
       tax_amount, total, payment_method, payment_amount,
       card_last4, card_aid, payments, reward_card_number, reward_program_name,
       reward_points_current, reward_points_required, discount_code,
-      tip, gratuity, pos_system, image_path, item_count, created_at
+      tip, gratuity, pos_system, image_path, image_hash, item_count, created_at
     ) VALUES (
       ${receipt.id}, ${receipt.user_id}, ${receipt.store_name}, ${receipt.store_address},
       ${receipt.store_phone}, ${receipt.store_website}, ${receipt.store_number},
@@ -142,7 +143,7 @@ export async function saveReceipt(receipt: Receipt, items: ReceiptItem[]): Promi
       ${receipt.reward_card_number}, ${receipt.reward_program_name},
       ${receipt.reward_points_current}, ${receipt.reward_points_required},
       ${receipt.discount_code}, ${receipt.tip}, ${receipt.gratuity},
-      ${receipt.pos_system}, ${receipt.image_path},
+      ${receipt.pos_system}, ${receipt.image_path}, ${receipt.image_hash ?? null},
       ${receipt.item_count}, ${receipt.created_at}
     )
   `;
@@ -176,6 +177,15 @@ export async function saveReceipt(receipt: Receipt, items: ReceiptItem[]): Promi
 }
 
 const DUPE_NAME_THRESHOLD = 0.7;
+
+export async function findReceiptByHash(userId: string, hash: string): Promise<Receipt | null> {
+  await ready();
+  const sql = getDb();
+  const rows = await sql`
+    SELECT * FROM receipts WHERE user_id = ${userId} AND image_hash = ${hash} LIMIT 1
+  `;
+  return rows.length > 0 ? (rows[0] as unknown as Receipt) : null;
+}
 
 export async function findDuplicateReceipt(
   userId: string,

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
 import sharp from 'sharp';
 import { extractReceiptFromImage } from '@/lib/extract';
 import { embedTexts, buildItemEmbedText } from '@/lib/embed';
-import { saveReceipt, findDuplicateReceipt } from '@/lib/db';
+import { saveReceipt, findDuplicateReceipt, findReceiptByHash } from '@/lib/db';
 import { uploadToR2 } from '@/lib/r2';
 import { requireAuth } from '@/lib/session';
 import { sanitizeReceiptField } from '@/lib/promptSecurity';
@@ -36,6 +36,16 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
 
     log(`upload: file="${file.name}" size=${(buffer.length / 1024 / 1024).toFixed(2)}MB`);
+
+    const imageHash = createHash('sha256').update(buffer).digest('hex');
+    const hashDuplicate = await findReceiptByHash(userId, imageHash);
+    if (hashDuplicate) {
+      log(`hash-dupe: matched existing receipt id=${hashDuplicate.id}`);
+      return NextResponse.json(
+        { error: 'This receipt has already been uploaded.', duplicate: true, id: hashDuplicate.id },
+        { status: 409 }
+      );
+    }
 
     const detectedMime = detectMimeFromBuffer(buffer);
     if (!detectedMime) {
@@ -168,6 +178,7 @@ export async function POST(request: NextRequest) {
       gratuity: extracted.gratuity,
       pos_system: sanitizeReceiptField(extracted.pos_system, 100),
       image_path: imageKey,
+      image_hash: imageHash,
       item_count: extracted.items.length,
       created_at: now,
     };

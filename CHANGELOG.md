@@ -4,6 +4,14 @@ All notable changes to Ledger.AI are documented here. Format follows [Keep a Cha
 
 ---
 
+## [2026-05-15] (2)
+
+### Added
+- Preflight hash deduplication: client hashes raw file via Web Crypto API before upload; `GET /api/receipts/preflight?hash=` checks against stored SHA-256 hashes; duplicate re-uploads rejected instantly without Sharp, Claude, R2, or DB write (~20s saved)
+- `image_hash TEXT` column in `receipts` table; stored on every new upload
+
+---
+
 ## [2026-05-15]
 
 ### Changed
