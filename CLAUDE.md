@@ -10,9 +10,9 @@
 4. Recommend the highest-leverage next item with rationale
 
 ### Per commit — keep docs in sync
-After every commit:
+After every commit (non-negotiable — do not skip):
 1. Update CHANGELOG.md — append to today's date entry (one entry per day, no numbered suffixes)
-2. Update `docs/planning/dependency-map.md` — mark any completed items ✓ in current state snapshot
+2. Update `docs/planning/dependency-map.md` — mark completed items ✓, add new items if the commit introduces new dependencies or phases
 3. Check `docs/architecture/` — if commit fixes a known issue, mark it done in the relevant doc
 4. Check `docs/adr/` and `docs/features/` — if a design decision changed, update the relevant doc
 
