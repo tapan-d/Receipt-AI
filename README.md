@@ -134,6 +134,7 @@ flowchart TD
    - Go to [neon.tech](https://neon.tech) → create a project
    - Copy the connection string from the dashboard (`postgresql://user:pass@ep-xxx.neon.tech/neondb?sslmode=require`)
    - Schema is created automatically on first request — no manual migration needed
+   - **Environment isolation:** create a `development` branch in Neon (Branches → New Branch — it's a free copy-on-write fork). Use the dev branch connection string in `.env.local`; use the `main` branch connection string in Vercel env vars. Schema changes and test data in local dev never touch production.
 
 3. **Provision Cloudflare R2**
 
@@ -143,6 +144,7 @@ flowchart TD
      - Scope: your specific bucket only
    - Note your **Account ID** (top-right of the Cloudflare dashboard)
    - Copy the **Access Key ID** and **Secret Access Key** (secret shown once)
+   - **Environment isolation:** create a second bucket (e.g. `receipt-ai-development`) for local dev. Set `R2_BUCKET_NAME=receipt-ai-development` in `.env.local` and `R2_BUCKET_NAME=receipt-ai-prod` in Vercel env vars. R2 API credentials are account-level — same keys work for both buckets.
 
 4. **Configure environment**
 
