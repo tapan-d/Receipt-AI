@@ -1,6 +1,6 @@
 # Dependency Map & Implementation Priority
 
-Last updated: 2026-05-15
+Last updated: 2026-05-16
 
 Use this doc to answer "what should I implement next?" — it maps what blocks what and why order matters.
 
@@ -47,9 +47,21 @@ Shareable Receipt Links (features/groups)
   └── depends on: UUID Identity ← hard blocker
   └── blocks: Groups invite flow
 
-Billing / Plans
-  └── depends on: UUID Identity ← hard blocker (Stripe customer ID needs user row)
+Feature Flags — Phase 1 (ADR 002)
+  └── depends on: nothing — build alongside any feature
+  └── blocks: nothing, but must precede Phase 2 limits system
+  └── enables: safe feature shipping without premature tier decisions
+
+Billing / Plans — Phase 2: JSONB Limits System (ADR 002)
+  └── depends on: UUID Identity ← hard blocker (user row required)
+  └── depends on: Feature Flags Phase 1 (flags swap to limit checks)
+  └── blocks: Stripe integration (Phase 3)
+  └── enables: per-tier quotas, per-user overrides, admin limit management
+
+Billing / Plans — Phase 3: Stripe (ADR 002)
+  └── depends on: Phase 2 JSONB Limits System
   └── depends on: Auto-Discovery (gives users a reason to pay)
+  └── blocks: revenue
 ```
 
 ---
@@ -78,7 +90,9 @@ Billing / Plans
 |---|------|-----------|
 | 7 | **Shareable Receipt Links** | UUID Identity |
 | 8 | **Groups** | UUID Identity + Shareable Links |
-| 9 | **Billing / Plans** | UUID Identity + Auto-Discovery |
+| 9 | **Billing Phase 1: Feature Flags** | Nothing — ship alongside any feature (LED-92) |
+| 10 | **Billing Phase 2: JSONB Limits** | UUID Identity + Feature Flags Phase 1 (LED-93, 94, 95, 96) |
+| 11 | **Billing Phase 3: Stripe** | Phase 2 Limits + Auto-Discovery (LED-48) |
 
 ---
 
@@ -96,7 +110,9 @@ Billing / Plans
 | Async Upload Pipeline | Not started |
 | Groups | Not started — UUID Identity now unblocked ✓ |
 | Shareable Links | Not started — UUID Identity now unblocked ✓ |
-| Billing | Not started — UUID Identity now unblocked ✓ |
+| Billing Phase 1: Feature Flags | Not started (LED-92) |
+| Billing Phase 2: JSONB Limits | Not started — design decided in ADR 002 (LED-93, 94, 95, 96) |
+| Billing Phase 3: Stripe | Not started — blocked by Phase 2 + Auto-Discovery (LED-48) |
 
 ---
 
