@@ -4,6 +4,16 @@ All notable changes to Ledger.AI are documented here. Format follows [Keep a Cha
 
 ---
 
+## [2026-05-16]
+
+### Changed
+- Duplicate detection: added phone and address as signals alongside store name similarity — phone exact match or address similarity ≥ 0.65 flags duplicate; name_sim ≥ 0.45 + addr_sim ≥ 0.45 combined also flags
+- Reverted "transcribe exactly as printed" extraction prompt — Claude's OCR inference handles degraded (WhatsApp) images better than pixel-literal transcription
+- Sharp normalize path: re-encode quality 90 → 75 to avoid inflating already-compressed WhatsApp images
+- DB indexes: added 5 indexes on `receipts` and `receipt_items` (user_id, user_id+date, receipt_id, HNSW vector)
+
+---
+
 ## [2026-05-15]
 
 ### Added

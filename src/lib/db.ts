@@ -98,6 +98,17 @@ async function ensureSchema(): Promise<void> {
       PRIMARY KEY (identifier, token)
     )
   `;
+  // Indexes — idempotent, safe to re-run
+  await sql`CREATE INDEX IF NOT EXISTS idx_receipts_user_id ON receipts(user_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_receipts_user_date ON receipts(user_id, purchase_date DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_receipt_items_user_id ON receipt_items(user_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_receipt_items_receipt_id ON receipt_items(receipt_id)`;
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_receipt_items_vector
+    ON receipt_items USING hnsw (vector vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64)
+  `;
+
   // One-time migration: seed from ALLOWED_EMAILS env var if table is empty
   const envEmails = process.env.ALLOWED_EMAILS?.split(',').map((e) => e.trim()).filter(Boolean) ?? [];
   if (envEmails.length > 0) {
@@ -198,18 +209,27 @@ export async function findDuplicateReceipt(
   storeName: string,
   purchaseDate: string,
   total: number,
+  storePhone?: string | null,
+  storeAddress?: string | null,
 ): Promise<Receipt | null> {
   await ready();
   const sql = getDb();
   const candidates = await sql`
-    SELECT *, similarity(LOWER(store_name), LOWER(${storeName})) AS name_sim
+    SELECT *,
+      similarity(LOWER(store_name), LOWER(${storeName})) AS name_sim,
+      (store_phone IS NOT NULL AND store_phone = ${storePhone ?? ''} AND ${storePhone ?? ''} <> '') AS phone_match,
+      CASE
+        WHEN store_address IS NOT NULL AND ${storeAddress ?? ''} <> ''
+        THEN similarity(LOWER(store_address), LOWER(${storeAddress ?? ''}))
+        ELSE 0
+      END AS addr_sim
     FROM receipts
     WHERE user_id = ${userId}
       AND purchase_date = ${purchaseDate}
       AND ABS(total - ${total}) < 0.01
     ORDER BY name_sim DESC
     LIMIT 5
-  ` as unknown as (Receipt & { name_sim: number })[];
+  ` as unknown as (Receipt & { name_sim: number; phone_match: boolean; addr_sim: number })[];
 
   if (candidates.length === 0) {
     log(`dupe-check: no candidates for date=${purchaseDate} total=${total}`);
@@ -217,9 +237,19 @@ export async function findDuplicateReceipt(
   }
 
   for (const row of candidates) {
-    const sim = Number(row.name_sim);
-    const matched = sim >= DUPE_NAME_THRESHOLD;
-    log(`dupe-check: candidate="${row.store_name}" similarity=${sim.toFixed(2)} threshold=${DUPE_NAME_THRESHOLD} matched=${matched}`);
+    const nameSim = Number(row.name_sim);
+    const addrSim = Number(row.addr_sim);
+    const phoneMatch = row.phone_match === true;
+
+    const matched =
+      phoneMatch ||
+      nameSim >= DUPE_NAME_THRESHOLD ||
+      addrSim >= 0.65 ||
+      (nameSim >= 0.45 && addrSim >= 0.45);
+
+    log(
+      `dupe-check: candidate="${row.store_name}" name_sim=${nameSim.toFixed(2)} addr_sim=${addrSim.toFixed(2)} phone_match=${phoneMatch} matched=${matched}`
+    );
     if (matched) return row;
   }
   return null;

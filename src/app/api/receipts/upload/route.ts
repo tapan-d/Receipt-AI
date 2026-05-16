@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       // Otherwise raw landscape pixels with EXIF=6 reach Claude/R2 with no rotation applied.
       const normalized = await sharp(buffer)
         .rotate()
-        .jpeg({ quality: 90 })
+        .jpeg({ quality: 75 })
         .toBuffer();
       apiBuffer = normalized;
       apiMediaType = 'image/jpeg';
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     log(`extract: store="${extracted.store_name}" date=${extracted.purchase_date} total=$${extracted.total} items=${extracted.items.length}`);
 
-    const duplicate = await findDuplicateReceipt(userId, extracted.store_name, extracted.purchase_date, extracted.total);
+    const duplicate = await findDuplicateReceipt(userId, extracted.store_name, extracted.purchase_date, extracted.total, extracted.store_phone, extracted.store_address);
     if (duplicate) {
       logWarn(`duplicate: matched existing receipt id=${duplicate.id}`);
       if (!duplicate.image_hash) {
