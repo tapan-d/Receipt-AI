@@ -89,7 +89,7 @@ Billing / Plans
 | UUID Identity | ✓ Done — LED-85 completed 2026-05-15 |
 | Duplicate detection (fuzzy + preflight hash) | ✓ Done — LED-89, LED-90 completed 2026-05-15 |
 | Delete receipt | ✓ Done — LED-20 completed 2026-05-15 |
-| DB Indexes | Not started |
+| DB Indexes | ✓ Done — 2026-05-16 (receipts: user_id, user_id+date DESC; receipt_items: user_id, receipt_id, HNSW vector) |
 | Redis Rate Limiter | Not started |
 | Pagination | Not started |
 | Auto-Discovery | Not started |

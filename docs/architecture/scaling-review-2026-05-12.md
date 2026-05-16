@@ -29,7 +29,9 @@
 
 ## P0 — Will Break Under Load
 
-### 1. No database indexes
+### 1. No database indexes ✓ DONE (2026-05-16)
+
+Added to `ensureSchema()` in `src/lib/db.ts`: `idx_receipts_user_id`, `idx_receipts_user_date`, `idx_receipt_items_user_id`, `idx_receipt_items_receipt_id`, `idx_receipt_items_vector` (HNSW).
 
 **File:** `src/lib/db.ts:14–47`
 

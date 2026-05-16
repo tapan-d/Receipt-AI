@@ -11,10 +11,10 @@
 
 ### Per commit — keep docs in sync
 After every commit:
-1. Update `docs/planning/dependency-map.md` current state snapshot — mark completed items ✓
-2. Update CHANGELOG.md — append to today's date entry (one entry per day, no numbered suffixes)
-3. If a Linear issue was completed: update the relevant doc status (ADR, feature overview, scaling review)
-4. If a new design decision was made: write or update the relevant doc in `/docs/`
+1. Update CHANGELOG.md — append to today's date entry (one entry per day, no numbered suffixes)
+2. Update `docs/planning/dependency-map.md` — mark any completed items ✓ in current state snapshot
+3. Check `docs/architecture/` — if commit fixes a known issue, mark it done in the relevant doc
+4. Check `docs/adr/` and `docs/features/` — if a design decision changed, update the relevant doc
 
 ## Standing Rules
 - Update CHANGELOG.md before every commit. One entry per day — append to today's date header if it exists, create it if not. Do not create numbered suffixes.
